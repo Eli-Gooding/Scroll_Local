@@ -18,6 +18,7 @@
 		F73EEAF22D51BBAD008EBB3C /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73EEAF12D51BBAD008EBB3C /* ProfileView.swift */; };
 		F73EEAF42D51BD6C008EBB3C /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73EEAF32D51BD6C008EBB3C /* MessagesView.swift */; };
 		F73EEAF62D51BD7D008EBB3C /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73EEAF52D51BD7D008EBB3C /* NotificationsView.swift */; };
+		F73EEAFA2D51D507008EBB3C /* OtherUserProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73EEAF92D51D507008EBB3C /* OtherUserProfileView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +53,7 @@
 		F73EEAF12D51BBAD008EBB3C /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		F73EEAF32D51BD6C008EBB3C /* MessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesView.swift; sourceTree = "<group>"; };
 		F73EEAF52D51BD7D008EBB3C /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
+		F73EEAF92D51D507008EBB3C /* OtherUserProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtherUserProfileView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -143,6 +145,7 @@
 				F73EEAF12D51BBAD008EBB3C /* ProfileView.swift */,
 				F73EEAF32D51BD6C008EBB3C /* MessagesView.swift */,
 				F73EEAF52D51BD7D008EBB3C /* NotificationsView.swift */,
+				F73EEAF92D51D507008EBB3C /* OtherUserProfileView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -277,6 +280,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F73EEAFA2D51D507008EBB3C /* OtherUserProfileView.swift in Sources */,
 				F73EEAF42D51BD6C008EBB3C /* MessagesView.swift in Sources */,
 				F73EEAF22D51BBAD008EBB3C /* ProfileView.swift in Sources */,
 				F73EEABA2D51936E008EBB3C /* ContentView.swift in Sources */,

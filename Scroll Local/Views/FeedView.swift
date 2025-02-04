@@ -10,36 +10,38 @@ struct FeedView: View {
     private let bottomPadding: CGFloat = 0
     
     var body: some View {
-        GeometryReader { mainGeometry in
-            VStack(spacing: 0) {
-                // Feed selector
-                Picker("Feed Type", selection: $selectedFeed) {
-                    Text("Following").tag(0)
-                    Text("Local Area").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .background(
-                    Capsule()
-                        .fill(Color.accentColor.opacity(0.1))
-                        .padding(.horizontal, 8)
-                )
-                
-                // Video feed
-                ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(spacing: 0) {
-                        if selectedFeed == 0 {
-                            FollowingFeedContent(currentIndex: $currentIndex)
-                        } else {
-                            LocalAreaFeedContent(currentIndex: $currentIndex)
-                        }
+        NavigationStack {
+            GeometryReader { mainGeometry in
+                VStack(spacing: 0) {
+                    // Feed selector
+                    Picker("Feed Type", selection: $selectedFeed) {
+                        Text("Following").tag(0)
+                        Text("Local Area").tag(1)
                     }
-                    .scrollTargetLayout()
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+                    .background(
+                        Capsule()
+                            .fill(Color.accentColor.opacity(0.1))
+                            .padding(.horizontal, 8)
+                    )
+                    
+                    // Video feed
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(spacing: 0) {
+                            if selectedFeed == 0 {
+                                FollowingFeedContent(currentIndex: $currentIndex)
+                            } else {
+                                LocalAreaFeedContent(currentIndex: $currentIndex)
+                            }
+                        }
+                        .scrollTargetLayout()
+                    }
+                    .scrollTargetBehavior(.paging)
+                    .scrollClipDisabled(false)
+                    // Calculate exact space between picker and tab bar, with padding above tab bar
+                    .frame(height: mainGeometry.size.height - tabBarHeight - pickerHeight - bottomPadding)
                 }
-                .scrollTargetBehavior(.paging)
-                .scrollClipDisabled(false)
-                // Calculate exact space between picker and tab bar, with padding above tab bar
-                .frame(height: mainGeometry.size.height - tabBarHeight - pickerHeight - bottomPadding)
             }
         }
     }
@@ -96,8 +98,11 @@ struct VideoCard: View {
                             .foregroundStyle(.white)
                         
                         HStack {
-                            Text("LocalExplorer")
-                                .font(.custom("AvenirNext-Medium", size: 16))
+                            NavigationLink("LocalExplorer") {
+                                OtherUserProfileView(username: "LocalExplorer")
+                            }
+                            .font(.custom("AvenirNext-Medium", size: 16))
+                            .foregroundColor(.white)
                             Text("•")
                             Text("Downtown")
                                 .font(.custom("AvenirNext-Medium", size: 16))
