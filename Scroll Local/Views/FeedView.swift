@@ -4,23 +4,28 @@ struct FeedView: View {
     @State private var selectedFeed = 0
     @State private var currentIndex = 0
     
+    // Layout constants
+    private let tabBarHeight: CGFloat = 0
+    private let pickerHeight: CGFloat = 50
+    private let bottomPadding: CGFloat = 0
+    
     var body: some View {
-        VStack(spacing: 0) {
-            // Feed selector
-            Picker("Feed Type", selection: $selectedFeed) {
-                Text("Following").tag(0)
-                Text("Local Area").tag(1)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .background(
-                Capsule()
-                    .fill(Color.accentColor.opacity(0.1))
-                    .padding(.horizontal, 8)
-            )
-            
-            // Video feed
-            GeometryReader { geometry in
+        GeometryReader { mainGeometry in
+            VStack(spacing: 0) {
+                // Feed selector
+                Picker("Feed Type", selection: $selectedFeed) {
+                    Text("Following").tag(0)
+                    Text("Local Area").tag(1)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .background(
+                    Capsule()
+                        .fill(Color.accentColor.opacity(0.1))
+                        .padding(.horizontal, 8)
+                )
+                
+                // Video feed
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 0) {
                         if selectedFeed == 0 {
@@ -29,9 +34,12 @@ struct FeedView: View {
                             LocalAreaFeedContent(currentIndex: $currentIndex)
                         }
                     }
+                    .scrollTargetLayout()
                 }
                 .scrollTargetBehavior(.paging)
-                .scrollTargetLayout()
+                .scrollClipDisabled(false)
+                // Calculate exact space between picker and tab bar, with padding above tab bar
+                .frame(height: mainGeometry.size.height - tabBarHeight - pickerHeight - bottomPadding)
             }
         }
     }
@@ -43,6 +51,7 @@ struct FollowingFeedContent: View {
     var body: some View {
         ForEach(0..<10) { index in
             VideoCard(index: index)
+                .frame(maxWidth: .infinity)
                 .containerRelativeFrame(.vertical)
                 .id(index)
         }
@@ -55,6 +64,7 @@ struct LocalAreaFeedContent: View {
     var body: some View {
         ForEach(0..<10) { index in
             VideoCard(index: index)
+                .frame(maxWidth: .infinity)
                 .containerRelativeFrame(.vertical)
                 .id(index)
         }
@@ -72,6 +82,7 @@ struct VideoCard: View {
                 Rectangle()
                     .fill(Color.gray.opacity(0.3))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped() // Ensure content doesn't overflow
                 
                 // Overlay content
                 HStack(alignment: .bottom) {
