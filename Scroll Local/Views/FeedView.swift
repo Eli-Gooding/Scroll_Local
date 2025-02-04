@@ -74,6 +74,9 @@ struct LocalAreaFeedContent: View {
 struct VideoCard: View {
     let index: Int
     @State private var isWiggling = false
+    @State private var showComments = false
+    @State private var showRating = false
+    @State private var isDescriptionExpanded = false
     
     var body: some View {
         GeometryReader { geometry in
@@ -82,7 +85,7 @@ struct VideoCard: View {
                 Rectangle()
                     .fill(Color.gray.opacity(0.3))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped() // Ensure content doesn't overflow
+                    .clipped()
                 
                 // Overlay content
                 HStack(alignment: .bottom) {
@@ -105,16 +108,35 @@ struct VideoCard: View {
                         
                         Text("Amazing local coffee shop with the best pastries in town! #coffee #local #foodie")
                             .font(.custom("AvenirNext-Regular", size: 15))
-                            .lineLimit(2)
+                            .lineLimit(isDescriptionExpanded ? nil : 2)
+                            .onTapGesture {
+                                withAnimation(.easeInOut) {
+                                    isDescriptionExpanded.toggle()
+                                }
+                            }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.trailing, 64)
+                    .padding(.trailing, 20)
                     
                     // Right side: Interaction buttons with animation
                     VStack(spacing: 20) {
-                        InteractionButton(icon: "heart.fill", count: "1.2k")
-                        InteractionButton(icon: "square.on.square.fill", count: "45")
-                        InteractionButton(icon: "square.and.arrow.up.fill", count: "Share")
+                        InteractionButton(icon: "bookmark.fill", count: "1.2k")
+                        
+                        InteractionButton(icon: "bubble.left.fill", count: "45")
+                            .onTapGesture {
+                                withAnimation(.spring()) {
+                                    showComments = true
+                                }
+                            }
+                        
+                        VStack(spacing: 12) {
+                            InteractionButton(icon: "square.and.arrow.up.fill", count: "Share")
+                            
+                            InteractionButton(icon: "hand.thumbsup.fill", count: "Rate")
+                                .onTapGesture {
+                                    showRating = true
+                                }
+                        }
                     }
                 }
                 .padding()
@@ -131,6 +153,92 @@ struct VideoCard: View {
             .cornerRadius(20)
             .shadow(radius: 5)
             .padding(.horizontal, 8)
+            .sheet(isPresented: $showComments) {
+                CommentsSheet()
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+            .alert("Rate this content", isPresented: $showRating) {
+                Button("Helpful") {
+                    // Handle helpful rating
+                }
+                Button("Unhelpful") {
+                    // Handle unhelpful rating
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+        }
+    }
+}
+
+struct CommentsSheet: View {
+    @State private var newComment: String = ""
+    @FocusState private var isCommentFocused: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Comments")
+                .font(.title)
+                .bold()
+                .padding(.horizontal)
+            
+            // Comment input field
+            HStack(spacing: 12) {
+                TextField("Add a comment...", text: $newComment, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($isCommentFocused)
+                    .lineLimit(1...5)
+                
+                Button(action: {
+                    // Handle posting comment
+                    if !newComment.isEmpty {
+                        // Add comment logic here
+                        newComment = ""
+                        isCommentFocused = false
+                    }
+                }) {
+                    Image(systemName: "paperplane.fill")
+                        .foregroundStyle(newComment.isEmpty ? .gray : .accentColor)
+                }
+                .disabled(newComment.isEmpty)
+            }
+            .padding(.horizontal)
+            
+            Divider()
+                .padding(.horizontal)
+            
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    ForEach(0..<10) { _ in
+                        CommentRow()
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+        .padding(.top)
+    }
+}
+
+struct CommentRow: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Circle()
+                    .fill(Color.gray)
+                    .frame(width: 40, height: 40)
+                
+                VStack(alignment: .leading) {
+                    Text("User Name")
+                        .font(.headline)
+                    Text("2 hours ago")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            Text("This is a great find! I love the atmosphere and the coffee is amazing!")
+                .font(.body)
         }
     }
 }
