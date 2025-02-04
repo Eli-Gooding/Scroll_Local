@@ -9,26 +9,56 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        TabView {
-            FeedView()
-                .tabItem {
-                    Label("Home", systemImage: "house")
+        NavigationStack {
+            TabView {
+                FeedView()
+                    .tabItem {
+                        Label("Home", systemImage: "house")
+                    }
+                
+                SearchView()
+                    .tabItem {
+                        Label("Search", systemImage: "magnifyingglass")
+                    }
+                
+                CaptureView()
+                    .tabItem {
+                        Label("Capture", systemImage: "plus.circle.fill")
+                    }
+                
+                ExploreView()
+                    .tabItem {
+                        Label("Map", systemImage: "map")
+                    }
+                
+                MessagesView()
+                    .tabItem {
+                        Label("Messages", systemImage: "message")
+                    }
+            }
+            .navigationTitle("Scroll Local")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    NavigationLink {
+                        ProfileView()
+                            .navigationBarBackButtonHidden(false)
+                    } label: {
+                        Image(systemName: "person.circle")
+                            .font(.title2)
+                    }
                 }
-            
-            SearchView()
-                .tabItem {
-                    Label("Search", systemImage: "magnifyingglass")
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink {
+                        NotificationsView()
+                            .navigationBarBackButtonHidden(false)
+                    } label: {
+                        Image(systemName: "bell")
+                            .font(.title2)
+                    }
                 }
-            
-            CaptureView()
-                .tabItem {
-                    Label("Capture", systemImage: "plus.circle.fill")
-                }
-            
-            ExploreView()
-                .tabItem {
-                    Label("Map", systemImage: "map")
-                }
+            }
         }
     }
 }
@@ -77,55 +107,25 @@ struct LocalAreaFeedView: View {
 
 struct SearchView: View {
     var body: some View {
-        NavigationView {
-            Text("Search Coming Soon")
-                .navigationTitle("Search")
-        }
+        Text("Search Coming Soon")
     }
 }
 
 struct CaptureView: View {
     var body: some View {
-        NavigationView {
-            Text("Capture Coming Soon")
-                .navigationTitle("Capture")
-        }
+        Text("Capture Coming Soon")
     }
 }
 
 struct ExploreView: View {
     var body: some View {
-        NavigationView {
-            Text("Map View Coming Soon")
-                .navigationTitle("Map")
-        }
+        Text("Map View Coming Soon")
     }
 }
 
 struct SavedVideosView: View {
     var body: some View {
-        NavigationView {
-            Text("Saved Videos Coming Soon")
-                .navigationTitle("Saved")
-        }
-    }
-}
-
-struct MessagesView: View {
-    var body: some View {
-        NavigationView {
-            Text("Messages Coming Soon")
-                .navigationTitle("Messages")
-        }
-    }
-}
-
-struct ProfileView: View {
-    var body: some View {
-        NavigationView {
-            Text("Profile Coming Soon")
-                .navigationTitle("Profile")
-        }
+        Text("Saved Videos Coming Soon")
     }
 }
 

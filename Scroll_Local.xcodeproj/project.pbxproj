@@ -15,6 +15,9 @@
 		F73EEAD32D519371008EBB3C /* Scroll_LocalUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73EEAD22D519371008EBB3C /* Scroll_LocalUITests.swift */; };
 		F73EEAD52D519371008EBB3C /* Scroll_LocalUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73EEAD42D519371008EBB3C /* Scroll_LocalUITestsLaunchTests.swift */; };
 		F73EEAF02D51AB71008EBB3C /* FeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73EEAEF2D51AB71008EBB3C /* FeedView.swift */; };
+		F73EEAF22D51BBAD008EBB3C /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73EEAF12D51BBAD008EBB3C /* ProfileView.swift */; };
+		F73EEAF42D51BD6C008EBB3C /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73EEAF32D51BD6C008EBB3C /* MessagesView.swift */; };
+		F73EEAF62D51BD7D008EBB3C /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73EEAF52D51BD7D008EBB3C /* NotificationsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,6 +49,9 @@
 		F73EEAD22D519371008EBB3C /* Scroll_LocalUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scroll_LocalUITests.swift; sourceTree = "<group>"; };
 		F73EEAD42D519371008EBB3C /* Scroll_LocalUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scroll_LocalUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		F73EEAEF2D51AB71008EBB3C /* FeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedView.swift; sourceTree = "<group>"; };
+		F73EEAF12D51BBAD008EBB3C /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		F73EEAF32D51BD6C008EBB3C /* MessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesView.swift; sourceTree = "<group>"; };
+		F73EEAF52D51BD7D008EBB3C /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -134,6 +140,9 @@
 			isa = PBXGroup;
 			children = (
 				F73EEAEF2D51AB71008EBB3C /* FeedView.swift */,
+				F73EEAF12D51BBAD008EBB3C /* ProfileView.swift */,
+				F73EEAF32D51BD6C008EBB3C /* MessagesView.swift */,
+				F73EEAF52D51BD7D008EBB3C /* NotificationsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -268,9 +277,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F73EEAF42D51BD6C008EBB3C /* MessagesView.swift in Sources */,
+				F73EEAF22D51BBAD008EBB3C /* ProfileView.swift in Sources */,
 				F73EEABA2D51936E008EBB3C /* ContentView.swift in Sources */,
 				F73EEAF02D51AB71008EBB3C /* FeedView.swift in Sources */,
 				F73EEAB82D51936E008EBB3C /* Scroll_LocalApp.swift in Sources */,
+				F73EEAF62D51BD7D008EBB3C /* NotificationsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
