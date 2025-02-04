@@ -66,4 +66,22 @@ iOSInjectionProject/
 *.pem
 *.key
 *.p12
-*.mobileprovision 
+*.mobileprovision
+
+# Environment variables
+.env.local
+.env.development
+.env.production
+
+# Other common iOS/Swift ignores
+*.swp
+*.lock
+profile
+
+# Xcode specific ignores
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/contents.xcworkspacedata
+*.xcworkspace/
+DerivedData/ 

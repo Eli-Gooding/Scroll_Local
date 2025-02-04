@@ -6,8 +6,34 @@
 //
 
 import SwiftUI
+import Firebase
 
 struct ContentView: View {
+    @StateObject private var firebaseService = FirebaseService.shared
+    @Environment(\.isPreview) var isPreview
+    
+    var body: some View {
+        Group {
+            if isPreview {
+                if PreviewFirebaseService.shared.isAuthenticated {
+                    MainTabView()
+                } else {
+                    LoginView()
+                }
+            } else {
+                if firebaseService.isAuthenticated {
+                    MainTabView()
+                } else {
+                    LoginView()
+                }
+            }
+        }
+    }
+}
+
+struct MainTabView: View {
+    @StateObject private var firebaseService = FirebaseService.shared
+    
     var body: some View {
         NavigationStack {
             TabView {
@@ -48,6 +74,7 @@ struct ContentView: View {
                             .font(.title2)
                     }
                 }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink {
                         NotificationsView()
@@ -58,6 +85,11 @@ struct ContentView: View {
                     }
                 }
             }
+        }
+        .onAppear {
+            #if DEBUG
+            firebaseService.debugPrintAuthState()
+            #endif
         }
     }
 }
@@ -130,4 +162,5 @@ struct SavedVideosView: View {
 
 #Preview {
     ContentView()
+        .withPreviewFirebase(isAuthenticated: true)
 }
