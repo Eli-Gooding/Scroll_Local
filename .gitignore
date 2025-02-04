@@ -73,6 +73,13 @@ iOSInjectionProject/
 .env.development
 .env.production
 
+# Firebase
+**/service-account-key.json
+**/GoogleService-Info.plist
+**/*firebase-adminsdk*.json
+**/firebase-debug.log
+.firebase/
+
 # Other common iOS/Swift ignores
 *.swp
 *.lock
