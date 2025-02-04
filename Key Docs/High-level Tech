@@ -1,10 +1,10 @@
-# High-Level Technical Implementation Document for ReelAI – User-Side
+# High-Level Technical Implementation Document for Scroll Local – User-Side
 
 _Reimagining TikTok with AI & Local Discovery_
 
 ## Overview
 
-This document outlines the high-level technical approach to implementing the user-side of the ReelAI mobile application using native iOS development (Swift & Xcode) with Firebase as the primary backend platform. Our focus is on creating a robust, secure, and scalable system that supports user authentication, video content management, social interactions, location-based discovery, and efficient distribution.
+This document outlines the high-level technical approach to implementing the user-side of the Scroll Local mobile application using native iOS development (Swift & Xcode) with Firebase as the primary backend platform. Our focus is on creating a robust, secure, and scalable system that supports user authentication, video content management, social interactions, location-based discovery, and efficient distribution.
 
 ## System Architecture
 
@@ -132,7 +132,7 @@ The system is split into two major parts:
 
 ## Conclusion
 
-This high-level technical document provides the blueprint for developing the user-side of ReelAI using native iOS development integrated with Firebase services. With Firebase handling authentication, data storage, media management, backend logic, notifications, and distribution, the ReelAI platform is positioned to deliver a feature-rich, location-aware, and AI-enhanced video experience while ensuring scalability, security, and rapid iteration.
+This high-level technical document provides the blueprint for developing the user-side of Scroll Local using native iOS development integrated with Firebase services. With Firebase handling authentication, data storage, media management, backend logic, notifications, and distribution, the Scroll Local platform is positioned to deliver a feature-rich, location-aware, and AI-enhanced video experience while ensuring scalability, security, and rapid iteration.
 
 *Next Steps:*
 - Finalize individual component designs.

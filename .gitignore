@@ -66,4 +66,29 @@ iOSInjectionProject/
 *.pem
 *.key
 *.p12
-*.mobileprovision 
+*.mobileprovision
+
+# Environment variables
+.env.local
+.env.development
+.env.production
+
+# Firebase
+**/service-account-key.json
+**/GoogleService-Info.plist
+**/*firebase-adminsdk*.json
+**/firebase-debug.log
+.firebase/
+
+# Other common iOS/Swift ignores
+*.swp
+*.lock
+profile
+
+# Xcode specific ignores
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/contents.xcworkspacedata
+*.xcworkspace/
+DerivedData/ 

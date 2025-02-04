@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ProfileView: View {
     @State private var selectedTab = 0
+    @StateObject private var firebaseService = FirebaseService.shared
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationStack {
@@ -27,7 +29,7 @@ struct ProfileView: View {
                     
                     // Bio Section
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Your Name")
+                        Text(firebaseService.authUser?.email ?? "No Name")
                             .font(.headline)
                         Text("Your bio goes here • Add a brief description about yourself")
                             .font(.subheadline)
@@ -90,10 +92,39 @@ struct ProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: {
-                        // Handle settings
-                    }) {
+                    Menu {
+                        Button(action: {
+                            // Handle account settings
+                        }) {
+                            Label("Account Settings", systemImage: "person.circle")
+                        }
+                        
+                        Button(action: {
+                            // Handle privacy settings
+                        }) {
+                            Label("Privacy", systemImage: "lock")
+                        }
+                        
+                        Button(action: {
+                            // Handle notifications settings
+                        }) {
+                            Label("Notifications", systemImage: "bell")
+                        }
+                        
+                        Divider()
+                        
+                        Button(role: .destructive, action: {
+                            do {
+                                try firebaseService.signOut()
+                            } catch {
+                                print("Error signing out: \(error)")
+                            }
+                        }) {
+                            Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                        }
+                    } label: {
                         Image(systemName: "gearshape")
+                            .font(.title2)
                     }
                 }
             }

@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isParticipant(messageData) {
+      return isSignedIn() && 
+        (request.auth.uid == messageData.senderId || 
+         request.auth.uid == messageData.receiverId);
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
+    }
+    
+    // Videos collection
+    match /videos/{videoId} {
+      allow read: if resource.data.isPublic == true || 
+                    (isSignedIn() && isOwner(resource.data.userId));
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
+    
+    // Comments collection
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && isOwner(resource.data.userId);
+      
+      // Prevent replies to replies
+      allow create: if isSignedIn() && 
+        (!resource.data.isReply || 
+         (resource.data.isReply && exists(/databases/$(database)/documents/comments/$(resource.data.parentCommentId)) && 
+          !get(/databases/$(database)/documents/comments/$(resource.data.parentCommentId)).data.isReply));
+    }
+    
+    // Messages collection
+    match /messages/{messageId} {
+      allow read, write: if isSignedIn() && isParticipant(resource.data);
+    }
+    
+    // Reactions collection
+    match /reactions/{reactionId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
+  }
+} 
