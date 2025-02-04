@@ -13,6 +13,11 @@ struct FeedView: View {
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
+            .background(
+                Capsule()
+                    .fill(Color.accentColor.opacity(0.1))
+                    .padding(.horizontal, 8)
+            )
             
             // Video feed
             GeometryReader { geometry in
@@ -58,6 +63,7 @@ struct LocalAreaFeedContent: View {
 
 struct VideoCard: View {
     let index: Int
+    @State private var isWiggling = false
     
     var body: some View {
         GeometryReader { geometry in
@@ -72,35 +78,38 @@ struct VideoCard: View {
                     // Left side: Title and description
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Hidden Gem Alert!")
-                            .font(.title3)
-                            .bold()
+                            .font(.custom("AvenirNext-Bold", size: 24))
+                            .foregroundStyle(.white)
                         
                         HStack {
                             Text("LocalExplorer")
-                                .font(.subheadline)
+                                .font(.custom("AvenirNext-Medium", size: 16))
                             Text("•")
                             Text("Downtown")
-                                .font(.subheadline)
+                                .font(.custom("AvenirNext-Medium", size: 16))
+                                .padding(.horizontal, 8)
+                                .background(Color.accentColor.opacity(0.3))
+                                .clipShape(Capsule())
                         }
                         
                         Text("Amazing local coffee shop with the best pastries in town! #coffee #local #foodie")
-                            .font(.subheadline)
+                            .font(.custom("AvenirNext-Regular", size: 15))
                             .lineLimit(2)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.trailing, 64)
                     
-                    // Right side: Interaction buttons
+                    // Right side: Interaction buttons with animation
                     VStack(spacing: 20) {
-                        InteractionButton(icon: "heart", count: "1.2k")
-                        InteractionButton(icon: "square.on.square", count: "45")
-                        InteractionButton(icon: "square.and.arrow.up", count: "Share")
+                        InteractionButton(icon: "heart.fill", count: "1.2k")
+                        InteractionButton(icon: "square.on.square.fill", count: "45")
+                        InteractionButton(icon: "square.and.arrow.up.fill", count: "Share")
                     }
                 }
                 .padding()
                 .background(
                     LinearGradient(
-                        gradient: Gradient(colors: [.clear, .black.opacity(0.5)]),
+                        gradient: Gradient(colors: [.clear, .black.opacity(0.7)]),
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -108,6 +117,9 @@ struct VideoCard: View {
                 .foregroundColor(.white)
             }
             .frame(maxHeight: geometry.size.height)
+            .cornerRadius(20)
+            .shadow(radius: 5)
+            .padding(.horizontal, 8)
         }
     }
 }
@@ -121,8 +133,11 @@ struct InteractionButton: View {
             Image(systemName: icon)
                 .font(.title2)
             Text(count)
-                .font(.caption)
+                .font(.custom("AvenirNext-Medium", size: 14))
         }
+        .padding(8)
+        .background(.ultraThinMaterial)
+        .clipShape(Capsule())
     }
 }
 

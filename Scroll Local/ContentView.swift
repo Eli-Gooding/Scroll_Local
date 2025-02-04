@@ -48,7 +48,6 @@ struct ContentView: View {
                             .font(.title2)
                     }
                 }
-                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink {
                         NotificationsView()
