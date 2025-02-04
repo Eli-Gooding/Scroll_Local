@@ -4,16 +4,6 @@ struct FeedView: View {
     @State private var selectedFeed = 0
     @State private var currentIndex = 0
     
-    // Calculate screen height minus navigation elements and tab bar
-    private var videoHeight: CGFloat {
-        UIScreen.main.bounds.height 
-        - (UIApplication.shared.windows.first?.safeAreaInsets.top ?? 0) // Top safe area
-        - 44 // Nav bar height
-        - 40 // Feed selector height
-        - 49 // Standard tab bar height
-        - (UIApplication.shared.windows.first?.safeAreaInsets.bottom ?? 0) // Bottom safe area for notched devices
-    }
-    
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -26,34 +16,36 @@ struct FeedView: View {
                 .padding(.horizontal)
                 
                 // Video feed
-                ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(spacing: 0) {
-                        if selectedFeed == 0 {
-                            FollowingFeedContent(currentIndex: $currentIndex, videoHeight: videoHeight)
-                        } else {
-                            LocalAreaFeedContent(currentIndex: $currentIndex, videoHeight: videoHeight)
+                GeometryReader { geometry in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(spacing: 0) {
+                            if selectedFeed == 0 {
+                                FollowingFeedContent(currentIndex: $currentIndex)
+                                    .frame(width: geometry.size.width, height: geometry.size.height)
+                            } else {
+                                LocalAreaFeedContent(currentIndex: $currentIndex)
+                                    .frame(width: geometry.size.width, height: geometry.size.height)
+                            }
                         }
                     }
+                    .scrollTargetBehavior(.paging)
+                    .scrollTargetLayout()
                 }
-                .scrollTargetBehavior(.paging)
-                .scrollTargetLayout()
-                
-                Spacer(minLength: 0)
+                .ignoresSafeArea()
             }
             .navigationTitle("Scroll Local")
             .navigationBarTitleDisplayMode(.inline)
+            .ignoresSafeArea(edges: .bottom)
         }
     }
 }
 
 struct FollowingFeedContent: View {
     @Binding var currentIndex: Int
-    let videoHeight: CGFloat
     
     var body: some View {
         ForEach(0..<10) { index in
             VideoCard(index: index)
-                .frame(height: videoHeight)
                 .containerRelativeFrame(.vertical)
                 .id(index)
         }
@@ -62,12 +54,10 @@ struct FollowingFeedContent: View {
 
 struct LocalAreaFeedContent: View {
     @Binding var currentIndex: Int
-    let videoHeight: CGFloat
     
     var body: some View {
         ForEach(0..<10) { index in
             VideoCard(index: index)
-                .frame(height: videoHeight)
                 .containerRelativeFrame(.vertical)
                 .id(index)
         }
@@ -84,7 +74,7 @@ struct VideoCard: View {
                 Rectangle()
                     .fill(Color.gray.opacity(0.3))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
+                    .ignoresSafeArea()
                 
                 // Overlay content
                 HStack(alignment: .bottom) {

@@ -15,19 +15,19 @@ struct ContentView: View {
                     Label("Home", systemImage: "house")
                 }
             
+            SearchView()
+                .tabItem {
+                    Label("Search", systemImage: "magnifyingglass")
+                }
+            
+            CaptureView()
+                .tabItem {
+                    Label("Capture", systemImage: "plus.circle.fill")
+                }
+            
             ExploreView()
                 .tabItem {
                     Label("Map", systemImage: "map")
-                }
-            
-            SavedVideosView()
-                .tabItem {
-                    Label("Saved", systemImage: "heart")
-                }
-            
-            ProfileView()
-                .tabItem {
-                    Label("Profile", systemImage: "person")
                 }
         }
     }
@@ -75,11 +75,29 @@ struct LocalAreaFeedView: View {
 }
 */
 
+struct SearchView: View {
+    var body: some View {
+        NavigationView {
+            Text("Search Coming Soon")
+                .navigationTitle("Search")
+        }
+    }
+}
+
+struct CaptureView: View {
+    var body: some View {
+        NavigationView {
+            Text("Capture Coming Soon")
+                .navigationTitle("Capture")
+        }
+    }
+}
+
 struct ExploreView: View {
     var body: some View {
         NavigationView {
-            Text("Explore & Map View Coming Soon")
-                .navigationTitle("Explore")
+            Text("Map View Coming Soon")
+                .navigationTitle("Map")
         }
     }
 }
