@@ -2,21 +2,28 @@ import SwiftUI
 
 struct MessagesView: View {
     var body: some View {
-        List {
-            ForEach(0..<10) { _ in
-                MessageRow()
-            }
-        }
-        .navigationTitle("Messages")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    // Handle new message
-                }) {
-                    Image(systemName: "square.and.pencil")
+        ZStack(alignment: .bottomTrailing) {
+            List {
+                ForEach(0..<10) { _ in
+                    MessageRow()
                 }
             }
+            .navigationTitle("Messages")
+            .navigationBarTitleDisplayMode(.inline)
+            
+            Button(action: {
+                // Handle new message
+            }) {
+                Image(systemName: "square.and.pencil")
+                    .font(.title2)
+                    .foregroundColor(.white)
+                    .frame(width: 60, height: 60)
+                    .background(Color.accentColor)
+                    .clipShape(Circle())
+                    .shadow(radius: 4)
+            }
+            .padding(.trailing, 20)
+            .padding(.bottom, 20)
         }
     }
 }
@@ -50,7 +57,7 @@ struct MessageRow: View {
                     .foregroundColor(.secondary)
                 
                 Circle()
-                    .fill(Color.blue)
+                    .fill(Color.accentColor)
                     .frame(width: 8, height: 8)
             }
         }
