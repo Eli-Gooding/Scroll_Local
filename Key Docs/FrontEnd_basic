@@ -1,0 +1,121 @@
+# Scroll Local Front-End Scaffolding Overview
+
+_Reimagining TikTok with a Whimsical Local Feel_
+
+## Overview
+
+Scroll Local is an AI-enhanced, location-focused video platform that brings together local discovery and creative video content. Our app is designed to make exploring local neighborhoods fun and engaging while offering an intuitive, user-friendly experience for both content consumers and creators. Leveraging Firebase for authentication, data storage, media management, and distribution, Scroll Local combines advanced technology with a playful, locally inspired design aesthetic.
+
+The platform offers:
+- **Personalized, location-based video feeds:** Users can see content from accounts they follow and from specific local areas.
+- **Social interactions:** Easy ways to react, comment, and share videos.
+- **Local discovery:** Interactive map views, “Take Me There” features, and heat maps categorized by topics like restaurants, attractions, and shopping.
+- **User empowerment:** Profile management, saved videos, and messaging features that encourage local community building.
+
+## Key User Workflows
+
+Below is a consolidation of the primary user workflows we are aiming to support:
+
+1. **Account Management:**
+   - **Sign-Up & Login:**  
+     - Create an account using email/password or OAuth (Google, Facebook, etc.) via Firebase Auth.
+     - Manage sessions and recover passwords seamlessly.
+   
+2. **Personalized Video Feed:**
+   - **Feed Display:**  
+     - View two main feeds: one based on accounts you follow and one based on local area content.
+     - Option to set the area to your current location or manually choose a specific city.
+   
+3. **User Interactions on Videos:**
+   - **Reactions:**  
+     - Mark videos as helpful, not helpful, or save them for later.
+   - **Commenting:**  
+     - Post comments and reply (one level of nesting) to facilitate discussions.
+   
+4. **Saved Videos Page:**
+   - **Content Curation:**  
+     - Access a dedicated page displaying all saved videos.
+   
+5. **Messaging:**
+   - **Direct Messaging:**  
+     - Chat with mutual followers.
+     - Share video URLs and links to user profiles within messages.
+   
+6. **Location & Map Features:**
+   - **"Take Me There" Button:**  
+     - On video pages, tap a button to view the location where the video was recorded on an interactive map.
+   - **Map View & Heat Maps:**  
+     - Explore a dedicated map page showing heat maps based on content categories (restaurants, attractions, shopping, etc.).
+   
+7. **Global Search:**
+   - **Search Functionality:**  
+     - Perform global searches for videos, topics, and other users.
+   
+8. **User Profile Management:**
+   - **Profile Overview:**  
+     - View profiles with all posts, metrics (views, saves, reaction ratios), and update personal details (profile picture, bio, follow lists).
+   - **Sharing Profiles:**  
+     - Share profile links via messaging to enable easy discovery by others.
+
+## Required Layouts & Screens
+
+To support the above workflows, we propose the following key layouts and screens, each embracing a whimsical local design that feels both modern and playful:
+
+1. **Authentication Screens:**
+   - **Login & Registration:**  
+     - Clean, minimal forms with playful, local-inspired illustrations (e.g., subtle cityscape backgrounds or quirky local landmarks).
+   
+2. **Home/Feed Screen:**
+   - **Dual Feed Tabs:**  
+     - One tab for “Following” and another for “Local Area.”
+     - A whimsical, map-inspired header or background that hints at local exploration.
+     - Modular video cards with rounded corners, light shadows, and accent colors drawn from a vibrant, urban palette.
+   
+3. **Video Detail Screen:**
+   - **Engagement & Interaction:**  
+     - Display video, reactions, and comments.
+     - Include a “Take Me There” button that opens a map view.
+     - Whimsical micro-animations for reaction buttons to enhance interactivity.
+   
+4. **Saved Videos Page:**
+   - **Curated Content List:**  
+     - A grid or list view of saved videos with visual cues (e.g., location stamps, playful icons).
+   
+5. **Messaging Interface:**
+   - **Chat Screen:**  
+     - Simple conversation threads with clean UI and subtle design nods to local postal or street signage.
+     - Easy sharing of video URLs and profile links.
+   
+6. **Map & Heat Map Screen:**
+   - **Interactive Map:**  
+     - Full-screen map view using a clean, minimalist map style with layers for different categories.
+     - Heat map overlays with color-coded filters (e.g., warm tones for restaurants, cool tones for attractions).
+   
+7. **Global Search Screen:**
+   - **Unified Search:**  
+     - Search bar at the top with filtering options.
+     - Results displayed in a card or list format with intuitive icons and local imagery.
+   
+8. **User Profile Screen:**
+   - **Profile Management:**  
+     - Display user posts, engagement metrics, and editing options.
+     - Include a visually appealing header that reflects the user's local persona (customizable with local icons or imagery).
+
+## Design Theme: Whimsical Local Feel
+
+- **Color Palette:**  
+  - Light, inviting backgrounds with accents inspired by local art and urban murals. Think vibrant, yet not overwhelming, colors that invoke local culture and community spirit.
+- **Typography:**  
+  - Clean, modern sans-serif fonts combined with playful accent fonts for headers that add a touch of local personality.
+- **Imagery & Icons:**  
+  - Use custom illustrations and icons that evoke the feel of a local neighborhood, such as quirky street signs, coffee shops, and small businesses.
+- **Micro-Animations:**  
+  - Incorporate playful animations (e.g., gentle transitions, animated map pins) to create an engaging and dynamic user experience.
+- **Overall Layout:**  
+  - A balance between minimalism and local character; plenty of whitespace paired with lively, well-organized elements that encourage exploration and discovery.
+
+## Conclusion
+
+The Scroll Local front-end aims to set itself apart with a unique blend of local exploration and AI-powered video engagement. By consolidating user workflows into intuitive screens and applying a whimsical local theme, the app will deliver a memorable, playful, and highly functional user experience.
+
+*This document is a living reference and will be refined as we iterate on design and feature details during development.*

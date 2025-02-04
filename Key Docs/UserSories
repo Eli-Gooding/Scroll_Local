@@ -1,0 +1,159 @@
+# ReelAI Consumer Stories – First Draft
+
+_Reimagining TikTok with AI & Local Discovery_
+
+This document outlines the primary consumer stories for the ReelAI application. These stories capture the core functionality and user interactions for our local, AI-enhanced video platform. As we iterate on the design, we will refine and expand these stories further.
+
+---
+
+## 1. Account Creation & Login
+
+- **Story:**  
+  "As a user, I want to create an account using my email or an OAuth provider (e.g., Google, Facebook) so that I can securely access and use the app."
+  
+- **Notes:**  
+  - Leverage Firebase Auth for secure and streamlined account management.
+  - Provide clear error messaging and a simple onboarding process.
+
+---
+
+## 2. Feed & Area Selection
+
+- **Story:**  
+  "As a user, I want to see a personalized video feed that shows content from accounts I follow and videos from my local area. I should also have the option to set my area to a specific city."
+
+- **Notes:**  
+  - Integrate a ‘following’ feed alongside an area-based feed.
+  - Allow users to toggle between current location and a selected city.
+  - Use location data (with user permission) to personalize the feed.
+
+---
+
+## 3. Reacting to Videos
+
+- **Story:**  
+  "As a user, I want to react to videos with simple options such as marking them as helpful, not helpful, or saving them, so that I can interact and curate content based on my preferences."
+
+- **Notes:**  
+  - Ensure reactions are immediately reflected in the UI.
+  - Use these reactions to further personalize the video recommendations.
+
+---
+
+## 4. Commenting on Videos
+
+- **Story:**  
+  "As a user, I want to comment on videos and reply (one-level nesting) to other comments so that I can engage in discussions without overly complex threading."
+
+- **Notes:**  
+  - Keep the comment structure simple to maintain clarity.
+  - Allow editing or deleting comments as needed.
+
+---
+
+## 5. Saved Videos Page
+
+- **Story:**  
+  "As a user, I want to have a dedicated page where I can view all the videos I’ve saved for later so that I can easily find and rewatch content I like."
+
+- **Notes:**  
+  - Provide options to organize or remove saved videos.
+  - Ensure the saved page loads quickly and is easy to navigate.
+
+---
+
+## 6. Messaging with Friends
+
+- **Story:**  
+  "As a user, I want to message with friends (mutual follows) so that I can discuss content or coordinate meetups related to local interests."
+
+- **Notes:**  
+  - Limit messaging to mutual connections for privacy.
+  - Ensure the messaging interface is intuitive and responsive.
+
+---
+
+## 7. Sharing Videos via Messaging
+
+- **Story:**  
+  "As a user, I want to share videos I discover in the feed directly in my messages via a URL so that I can easily spread interesting content to friends."
+
+- **Notes:**  
+  - Generate shareable URLs that deep-link to the specific video.
+  - Seamlessly integrate the share functionality into the messaging feature.
+
+---
+
+## 8. “Take Me There” Feature on Videos
+
+- **Story:**  
+  "As a user, I want an option on videos to ‘Take Me There’ which, when tapped, opens a map view showing the location where the video was taken, so that I can explore the area."
+
+- **Notes:**  
+  - Link video metadata to geographic coordinates.
+  - Use native map functionalities for a smooth transition.
+
+---
+
+## 9. Map Page with Heat Maps
+
+- **Story:**  
+  "As a user, I want to navigate to a map page where I can view heat maps based on different topics (e.g., restaurants, attractions, shopping) so that I can explore local content visually."
+
+- **Notes:**  
+  - Implement multiple map layers for different content categories.
+  - Provide filters for users to toggle between topics.
+
+---
+
+## 10. Global Search Functionality
+
+- **Story:**  
+  "As a user, I want to perform a global search for videos, topics, and other users so that I can quickly find content or people of interest."
+
+- **Notes:**  
+  - Ensure the search is comprehensive and returns relevant results.
+  - Support filtering and sorting for an enhanced user experience.
+
+---
+
+## 11. User Profile & Post Overview
+
+- **Story:**  
+  "As a user, when I view another user’s profile, I want to see all of their posts along with key metrics (views, saves, helpful/unhelpful ratios) so that I can gauge their content’s popularity and impact."
+
+- **Notes:**  
+  - Provide a clear and organized profile page layout.
+  - Use visual indicators for key metrics to enhance readability.
+
+---
+
+## 12. Sharing User Profiles
+
+- **Story:**  
+  "As a user, I want to share a link to another user’s profile in a direct message so that my friends can easily check out their content."
+
+- **Notes:**  
+  - Create profile URLs that can be shared externally or within the app.
+  - Ensure that clicking the link takes the recipient directly to the user’s profile.
+
+---
+
+## 13. Managing Own Profile
+
+- **Story:**  
+  "As a user, when I view my own profile, I want to be able to update my profile picture, see a list of who I am following and who is following me so that I can manage my online identity effectively."
+
+- **Notes:**  
+  - Offer straightforward options for profile customization.
+  - Display follow/follower lists with clear visual cues for interaction.
+
+---
+
+# Next Steps
+
+- Review and refine these stories with additional details and edge cases.
+- Align each story with corresponding technical requirements, ensuring Firebase integration (Auth, Firestore, etc.) supports all functionalities.
+- Begin mapping out the UI/UX wireframes based on these consumer stories.
+
+---
