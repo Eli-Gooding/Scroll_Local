@@ -1,4 +1,5 @@
 import SwiftUI
+import AVKit
 
 struct FeedView: View {
     @State private var selectedFeed = 0
@@ -79,15 +80,49 @@ struct VideoCard: View {
     @State private var showComments = false
     @State private var showRating = false
     @State private var isDescriptionExpanded = false
+    @State private var player: AVPlayer?
+    
+    // Sample video URLs - using Apple's sample videos
+    private let sampleVideos = [
+        URL(string: "https://bit.ly/swswift")!,
+        URL(string: "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8")!
+    ]
+    
+    init(index: Int) {
+        self.index = index
+        let player = AVPlayer(url: sampleVideos[index % sampleVideos.count])
+        player.isMuted = true // Muted by default for better UX
+        _player = State(initialValue: player)
+    }
     
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .bottom) {
                 // Video content
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
+                if let player = player {
+                    VideoPlayer(player: player)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                        .onAppear {
+                            player.play()
+                            // Loop the video
+                            NotificationCenter.default.addObserver(
+                                forName: .AVPlayerItemDidPlayToEndTime,
+                                object: player.currentItem,
+                                queue: .main) { _ in
+                                    player.seek(to: .zero)
+                                    player.play()
+                                }
+                        }
+                        .onDisappear {
+                            player.pause()
+                            NotificationCenter.default.removeObserver(
+                                self,
+                                name: .AVPlayerItemDidPlayToEndTime,
+                                object: player.currentItem
+                            )
+                        }
+                }
                 
                 // Overlay content
                 HStack(alignment: .bottom) {
