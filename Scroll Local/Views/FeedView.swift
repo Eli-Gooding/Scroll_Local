@@ -248,13 +248,13 @@ struct InteractionButton: View {
     let count: String
     
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 2) {
             Image(systemName: icon)
-                .font(.title2)
+                .font(.title3)
             Text(count)
-                .font(.custom("AvenirNext-Medium", size: 14))
+                .font(.custom("AvenirNext-Medium", size: 12))
         }
-        .padding(8)
+        .padding(6)
         .background(.ultraThinMaterial)
         .clipShape(Capsule())
     }
