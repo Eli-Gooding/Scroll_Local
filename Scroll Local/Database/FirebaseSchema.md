@@ -35,7 +35,7 @@ struct Video {
 }
 ```
 
-### VideoSaves Collection
+### videoSaves Collection
 ```swift
 struct VideoSave {
     let id: String
@@ -45,7 +45,7 @@ struct VideoSave {
 }
 ```
 
-### VideoRatings Collection
+### videoRatings Collection
 ```swift
 struct VideoRating {
     let id: String
@@ -159,6 +159,13 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow delete: if isSignedIn() && isOwner(resource.data.userId);
     }
+    
+    // Video Saves collection
+    match /video_saves/{saveId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
   }
 }
 ```
@@ -199,6 +206,12 @@ service firebase.storage {
 2. Tags + Time Index:
    - Fields:
      - `tags` (ARRAY_CONTAINS)
+     - `createdAt` (DESCENDING)
+   - Query scope: Collection
+
+3. User Videos Index:
+   - Fields:
+     - `userId` (ASCENDING)
      - `createdAt` (DESCENDING)
    - Query scope: Collection
 

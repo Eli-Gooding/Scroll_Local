@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @State private var selectedTab = 0
+    @StateObject private var viewModel = ProfileViewModel()
     @StateObject private var firebaseService = FirebaseService.shared
     @Environment(\.dismiss) private var dismiss
     
@@ -74,15 +75,25 @@ struct ProfileView: View {
                         .padding(.vertical, 8)
                         
                         // Content Grid
-                        LazyVGrid(columns: [
-                            GridItem(.flexible()),
-                            GridItem(.flexible()),
-                            GridItem(.flexible())
-                        ], spacing: 2) {
-                            ForEach(0..<15) { index in
-                                Rectangle()
-                                    .aspectRatio(1, contentMode: .fill)
-                                    .foregroundColor(Color(.systemGray5))
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        } else {
+                            LazyVGrid(columns: [
+                                GridItem(.flexible()),
+                                GridItem(.flexible()),
+                                GridItem(.flexible())
+                            ], spacing: 2) {
+                                ForEach(selectedTab == 0 ? viewModel.userVideos : viewModel.savedVideos) { video in
+                                    VideoThumbnail(video: video)
+                                }
+                            }
+                            
+                            if (selectedTab == 0 ? viewModel.userVideos : viewModel.savedVideos).isEmpty {
+                                Text(selectedTab == 0 ? "No videos posted yet" : "No saved videos")
+                                    .foregroundColor(.secondary)
+                                    .padding()
                             }
                         }
                     }
@@ -90,6 +101,10 @@ struct ProfileView: View {
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                viewModel.fetchUserVideos()
+                viewModel.fetchSavedVideos()
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -129,6 +144,22 @@ struct ProfileView: View {
                 }
             }
         }
+    }
+}
+
+struct VideoThumbnail: View {
+    let video: Video
+    
+    var body: some View {
+        AsyncImage(url: URL(string: video.videoUrl)) { image in
+            image
+                .resizable()
+                .aspectRatio(1, contentMode: .fill)
+        } placeholder: {
+            Rectangle()
+                .foregroundColor(Color(.systemGray5))
+        }
+        .clipped()
     }
 }
 
