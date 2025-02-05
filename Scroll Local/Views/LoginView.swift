@@ -11,6 +11,8 @@ struct LoginView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var isLoading = false
+    @State private var showVerificationAlert = false
+    @State private var showResendVerification = false
     
     // Validation states
     private var isEmailValid: Bool {
@@ -100,8 +102,14 @@ struct LoginView: View {
                         do {
                             if isSignUp {
                                 try await firebaseService.signUp(email: email, password: password, username: username)
+                                showVerificationAlert = true
                             } else {
                                 try await firebaseService.signIn(email: email, password: password)
+                                // Check email verification status on sign in
+                                if let isVerified = try? await firebaseService.checkEmailVerification(),
+                                   !isVerified {
+                                    showResendVerification = true
+                                }
                             }
                         } catch {
                             showError = true
@@ -143,12 +151,30 @@ struct LoginView: View {
                 
                 // Social Sign In Button
                 Button(action: {
-                    // Google sign in will be implemented later
+                    Task {
+                        isLoading = true
+                        do {
+                            if isSignUp {
+                                // For sign up, we need to check if the email exists first
+                                let result = try await firebaseService.signInWithGoogle()
+                                if result == .newUser {
+                                    showVerificationAlert = true
+                                }
+                            } else {
+                                // For sign in, just attempt to sign in
+                                _ = try await firebaseService.signInWithGoogle()
+                            }
+                        } catch {
+                            showError = true
+                            errorMessage = "Google Sign In failed: \(error.localizedDescription)"
+                        }
+                        isLoading = false
+                    }
                 }) {
                     HStack {
                         Image(systemName: "g.circle.fill")
                             .font(.title2)
-                        Text("Continue with Google")
+                        Text(isSignUp ? "Sign up with Google" : "Continue with Google")
                     }
                     .padding()
                     .frame(maxWidth: .infinity)
@@ -194,6 +220,36 @@ struct LoginView: View {
                 #endif
             }
             .padding()
+            .alert("Verify Your Email", isPresented: $showVerificationAlert) {
+                Button("OK", role: .cancel) { }
+                Button("Resend Email") {
+                    Task {
+                        do {
+                            try await firebaseService.resendVerificationEmail()
+                        } catch {
+                            showError = true
+                            errorMessage = "Failed to resend verification email"
+                        }
+                    }
+                }
+            } message: {
+                Text("Please check your email to verify your account. You need to verify your email before you can use all features.")
+            }
+            .alert("Email Not Verified", isPresented: $showResendVerification) {
+                Button("OK", role: .cancel) { }
+                Button("Resend Email") {
+                    Task {
+                        do {
+                            try await firebaseService.resendVerificationEmail()
+                        } catch {
+                            showError = true
+                            errorMessage = "Failed to resend verification email"
+                        }
+                    }
+                }
+            } message: {
+                Text("Your email is not verified. Please check your email for the verification link or request a new one.")
+            }
             .alert("Error", isPresented: $showError) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -225,6 +281,8 @@ struct LoginView: View {
             return "There is no user record corresponding to this email."
         case .networkError:
             return "Network error. Please check your internet connection."
+        case .unverifiedEmail:
+            return "Please verify your email address before signing in."
         default:
             return "An error occurred. Please try again."
         }

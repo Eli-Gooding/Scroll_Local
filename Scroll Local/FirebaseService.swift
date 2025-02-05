@@ -1,6 +1,13 @@
 import Foundation
 import Firebase
 import FirebaseAuth
+import GoogleSignIn
+import GoogleSignInSwift
+
+enum GoogleSignInResult {
+    case existingUser
+    case newUser
+}
 
 class FirebaseService: ObservableObject {
     @Published var authUser: FirebaseAuth.User?
@@ -95,6 +102,9 @@ class FirebaseService: ObservableObject {
         do {
             let result = try await Auth.auth().createUser(withEmail: email, password: password)
             
+            // Send email verification
+            try await result.user.sendEmailVerification()
+            
             // Create the user document in Firestore
             try await userService.createUser(
                 withEmail: email,
@@ -121,6 +131,20 @@ class FirebaseService: ObservableObject {
             }
             throw error
         }
+    }
+    
+    func checkEmailVerification() async throws -> Bool {
+        guard let user = Auth.auth().currentUser else {
+            return false
+        }
+        
+        try await user.reload()
+        return user.isEmailVerified
+    }
+    
+    func resendVerificationEmail() async throws {
+        guard let user = Auth.auth().currentUser else { return }
+        try await user.sendEmailVerification()
     }
     
     func signOut() throws {
@@ -168,8 +192,102 @@ class FirebaseService: ObservableObject {
     }
     #endif
     
-    // Google Sign In will be added here
-    // func signInWithGoogle() { }
+    func signInWithGoogle() async throws -> GoogleSignInResult {
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            throw NSError(
+                domain: "FirebaseService",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Firebase configuration error: Client ID not found in GoogleService-Info.plist"]
+            )
+        }
+        
+        #if DEBUG
+        print("FirebaseService: Attempting Google Sign In with client ID: \(clientID)")
+        #endif
+        
+        // Get Google Sign In configuration object
+        let config = GIDConfiguration(clientID: clientID)
+        GIDSignIn.sharedInstance.configuration = config
+        
+        // Get the root view controller from the main actor
+        let rootViewController: UIViewController? = await MainActor.run {
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let rootViewController = windowScene.windows.first?.rootViewController else {
+                return nil
+            }
+            return rootViewController
+        }
+        
+        guard let rootViewController = rootViewController else {
+            throw NSError(
+                domain: "FirebaseService",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "No root view controller found. Please ensure the app is properly initialized."]
+            )
+        }
+        
+        do {
+            // Start Google Sign In flow
+            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+            
+            guard let idToken = result.user.idToken?.tokenString else {
+                throw NSError(
+                    domain: "FirebaseService",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to get ID token from Google Sign In"]
+                )
+            }
+            
+            #if DEBUG
+            print("FirebaseService: Successfully got Google Sign In token")
+            #endif
+            
+            // Create Firebase credential
+            let credential = GoogleAuthProvider.credential(
+                withIDToken: idToken,
+                accessToken: result.user.accessToken.tokenString
+            )
+            
+            // Try to sign in with Firebase
+            let authResult = try await Auth.auth().signIn(with: credential)
+            
+            // Get display name from Google profile
+            let displayName: String? = result.user.profile?.givenName
+            
+            #if DEBUG
+            print("FirebaseService: Successfully signed in with Google, checking if user exists...")
+            #endif
+            
+            // Check if this is a new user by trying to fetch their document
+            let isNewUser = try await userService.fetchUser(withId: authResult.user.uid) == nil
+            
+            if isNewUser {
+                #if DEBUG
+                print("FirebaseService: Creating new user document for Google Sign In user")
+                #endif
+                
+                // Create new user document
+                try await userService.createUser(
+                    withEmail: authResult.user.email ?? "",
+                    uid: authResult.user.uid,
+                    displayName: displayName
+                )
+            }
+            
+            await MainActor.run {
+                self.authUser = authResult.user
+                self.isAuthenticated = true
+                self.authError = nil
+            }
+            
+            return isNewUser ? .newUser : .existingUser
+        } catch {
+            #if DEBUG
+            print("FirebaseService: Google Sign In failed with error: \(error.localizedDescription)")
+            #endif
+            throw error
+        }
+    }
     
     // Facebook Sign In will be added here
     // func signInWithFacebook() { }
