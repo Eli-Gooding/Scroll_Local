@@ -2,6 +2,7 @@ import SwiftUI
 import AVKit
 
 struct FeedView: View {
+    @StateObject private var viewModel = FeedViewModel()
     @State private var selectedFeed = 0
     @State private var currentIndex = 0
     
@@ -27,33 +28,64 @@ struct FeedView: View {
                             .padding(.horizontal, 8)
                     )
                     
-                    // Video feed
-                    ScrollView(.vertical, showsIndicators: false) {
-                        LazyVStack(spacing: 0) {
-                            if selectedFeed == 0 {
-                                FollowingFeedContent(currentIndex: $currentIndex)
-                            } else {
-                                LocalAreaFeedContent(currentIndex: $currentIndex)
+                    if viewModel.isLoading {
+                        Spacer()
+                        ProgressView("Loading videos...")
+                        Spacer()
+                    } else if let error = viewModel.error {
+                        Spacer()
+                        VStack {
+                            Text("Error loading videos")
+                                .font(.headline)
+                            Text(error.localizedDescription)
+                                .font(.subheadline)
+                                .foregroundColor(.red)
+                            Button("Retry") {
+                                Task {
+                                    await viewModel.fetchVideos()
+                                }
                             }
+                            .padding()
                         }
-                        .scrollTargetLayout()
+                        Spacer()
+                    } else if viewModel.videos.isEmpty {
+                        Spacer()
+                        Text("No videos found")
+                            .font(.headline)
+                        Spacer()
+                    } else {
+                        // Video feed
+                        ScrollView(.vertical, showsIndicators: false) {
+                            LazyVStack(spacing: 0) {
+                                if selectedFeed == 0 {
+                                    FollowingFeedContent(videos: viewModel.videos, currentIndex: $currentIndex)
+                                } else {
+                                    LocalAreaFeedContent(videos: viewModel.videos, currentIndex: $currentIndex)
+                                }
+                            }
+                            .scrollTargetLayout()
+                        }
+                        .scrollTargetBehavior(.paging)
+                        .scrollClipDisabled(false)
+                        .frame(height: mainGeometry.size.height - tabBarHeight - pickerHeight - bottomPadding)
                     }
-                    .scrollTargetBehavior(.paging)
-                    .scrollClipDisabled(false)
-                    // Calculate exact space between picker and tab bar, with padding above tab bar
-                    .frame(height: mainGeometry.size.height - tabBarHeight - pickerHeight - bottomPadding)
                 }
             }
+        }
+        .task {
+            print("FeedView appeared, fetching videos...")
+            await viewModel.fetchVideos()
         }
     }
 }
 
 struct FollowingFeedContent: View {
+    let videos: [Video]
     @Binding var currentIndex: Int
     
     var body: some View {
-        ForEach(0..<10) { index in
-            VideoCard(index: index)
+        ForEach(Array(videos.enumerated()), id: \.element.id) { index, video in
+            VideoCard(video: video, index: index)
                 .frame(maxWidth: .infinity)
                 .containerRelativeFrame(.vertical)
                 .id(index)
@@ -62,11 +94,12 @@ struct FollowingFeedContent: View {
 }
 
 struct LocalAreaFeedContent: View {
+    let videos: [Video]
     @Binding var currentIndex: Int
     
     var body: some View {
-        ForEach(0..<10) { index in
-            VideoCard(index: index)
+        ForEach(Array(videos.enumerated()), id: \.element.id) { index, video in
+            VideoCard(video: video, index: index)
                 .frame(maxWidth: .infinity)
                 .containerRelativeFrame(.vertical)
                 .id(index)
@@ -75,24 +108,23 @@ struct LocalAreaFeedContent: View {
 }
 
 struct VideoCard: View {
+    let video: Video
     let index: Int
     @State private var isWiggling = false
     @State private var showComments = false
     @State private var showRating = false
     @State private var isDescriptionExpanded = false
     @State private var player: AVPlayer?
+    @StateObject private var viewModel = FeedViewModel()
     
-    // Sample video URLs - using Apple's sample videos
-    private let sampleVideos = [
-        URL(string: "https://bit.ly/swswift")!,
-        URL(string: "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8")!
-    ]
-    
-    init(index: Int) {
+    init(video: Video, index: Int) {
+        self.video = video
         self.index = index
-        let player = AVPlayer(url: sampleVideos[index % sampleVideos.count])
-        player.isMuted = true // Muted by default for better UX
-        _player = State(initialValue: player)
+        if let url = URL(string: video.videoUrl) {
+            let player = AVPlayer(url: url)
+            player.isMuted = true // Muted by default for better UX
+            _player = State(initialValue: player)
+        }
     }
     
     var body: some View {
@@ -113,6 +145,12 @@ struct VideoCard: View {
                                     player.seek(to: .zero)
                                     player.play()
                                 }
+                            // Increment view count
+                            if let id = video.id {
+                                Task {
+                                    await viewModel.incrementViews(for: id)
+                                }
+                            }
                         }
                         .onDisappear {
                             player.pause()
@@ -128,25 +166,25 @@ struct VideoCard: View {
                 HStack(alignment: .bottom) {
                     // Left side: Title and description
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Hidden Gem Alert!")
+                        Text(video.title)
                             .font(.custom("AvenirNext-Bold", size: 24))
                             .foregroundStyle(.white)
                         
                         HStack {
-                            NavigationLink("LocalExplorer") {
-                                OtherUserProfileView(username: "LocalExplorer")
+                            NavigationLink(video.userId) {
+                                OtherUserProfileView(username: video.userId)
                             }
                             .font(.custom("AvenirNext-Medium", size: 16))
                             .foregroundColor(.white)
                             Text("•")
-                            Text("Downtown")
+                            Text(video.location)
                                 .font(.custom("AvenirNext-Medium", size: 16))
                                 .padding(.horizontal, 8)
                                 .background(Color.accentColor.opacity(0.3))
                                 .clipShape(Capsule())
                         }
                         
-                        Text("Amazing local coffee shop with the best pastries in town! #coffee #local #foodie")
+                        Text(video.description)
                             .font(.custom("AvenirNext-Regular", size: 15))
                             .lineLimit(isDescriptionExpanded ? nil : 2)
                             .onTapGesture {
@@ -158,11 +196,11 @@ struct VideoCard: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.trailing, 20)
                     
-                    // Right side: Interaction buttons with animation
+                    // Right side: Interaction buttons
                     VStack(spacing: 20) {
-                        InteractionButton(icon: "bookmark.fill", count: "1.2k")
+                        InteractionButton(icon: "bookmark.fill", count: "\(video.saveCount)")
                         
-                        InteractionButton(icon: "bubble.left.fill", count: "45")
+                        InteractionButton(icon: "bubble.left.fill", count: "\(video.commentCount)")
                             .onTapGesture {
                                 withAnimation(.spring()) {
                                     showComments = true
@@ -200,10 +238,18 @@ struct VideoCard: View {
             }
             .alert("Rate this content", isPresented: $showRating) {
                 Button("Helpful") {
-                    // Handle helpful rating
+                    if let id = video.id {
+                        Task {
+                            await viewModel.updateRating(for: id, isHelpful: true)
+                        }
+                    }
                 }
                 Button("Unhelpful") {
-                    // Handle unhelpful rating
+                    if let id = video.id {
+                        Task {
+                            await viewModel.updateRating(for: id, isHelpful: false)
+                        }
+                    }
                 }
                 Button("Cancel", role: .cancel) {}
             }

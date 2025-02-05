@@ -10,11 +10,15 @@ class UserService: ObservableObject {
     
     private init() {}
     
-    func createUser(withEmail email: String, uid: String) async throws {
+    func createUser(withEmail email: String, uid: String, displayName: String? = nil) async throws {
         let user = User(
             id: uid,
             email: email,
-            createdAt: Date()
+            displayName: displayName,
+            createdAt: Date(),
+            location: nil,
+            following: [],
+            followers: []
         )
         
         try await db.collection("users").document(uid).setData(user.toDictionary())

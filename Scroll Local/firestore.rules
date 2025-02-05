@@ -26,8 +26,7 @@ service cloud.firestore {
     
     // Videos collection
     match /videos/{videoId} {
-      allow read: if resource.data.isPublic == true || 
-                    (isSignedIn() && isOwner(resource.data.userId));
+      allow read: if true;  // Allow public reading of videos
       allow create: if isSignedIn();
       allow update, delete: if isSignedIn() && isOwner(resource.data.userId);
     }

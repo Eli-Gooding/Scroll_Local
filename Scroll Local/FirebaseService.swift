@@ -1,6 +1,13 @@
 import Foundation
 import Firebase
 import FirebaseAuth
+import GoogleSignIn
+import GoogleSignInSwift
+
+enum GoogleSignInResult {
+    case existingUser
+    case newUser
+}
 
 class FirebaseService: ObservableObject {
     @Published var authUser: FirebaseAuth.User?
@@ -87,7 +94,7 @@ class FirebaseService: ObservableObject {
         }
     }
     
-    func signUp(email: String, password: String) async throws {
+    func signUp(email: String, password: String, username: String? = nil) async throws {
         #if DEBUG
         print("FirebaseService: Attempting sign up with email: \(email)")
         #endif
@@ -95,8 +102,15 @@ class FirebaseService: ObservableObject {
         do {
             let result = try await Auth.auth().createUser(withEmail: email, password: password)
             
+            // Send email verification
+            try await result.user.sendEmailVerification()
+            
             // Create the user document in Firestore
-            try await userService.createUser(withEmail: email, uid: result.user.uid)
+            try await userService.createUser(
+                withEmail: email,
+                uid: result.user.uid,
+                displayName: username
+            )
             
             await MainActor.run {
                 self.authUser = result.user
@@ -117,6 +131,20 @@ class FirebaseService: ObservableObject {
             }
             throw error
         }
+    }
+    
+    func checkEmailVerification() async throws -> Bool {
+        guard let user = Auth.auth().currentUser else {
+            return false
+        }
+        
+        try await user.reload()
+        return user.isEmailVerified
+    }
+    
+    func resendVerificationEmail() async throws {
+        guard let user = Auth.auth().currentUser else { return }
+        try await user.sendEmailVerification()
     }
     
     func signOut() throws {
@@ -164,8 +192,79 @@ class FirebaseService: ObservableObject {
     }
     #endif
     
-    // Google Sign In will be added here
-    // func signInWithGoogle() { }
+    func signInWithGoogle() async throws -> GoogleSignInResult {
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            throw NSError(
+                domain: "FirebaseService",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Firebase configuration error"]
+            )
+        }
+        
+        // Get Google Sign In configuration object
+        let config = GIDConfiguration(clientID: clientID)
+        GIDSignIn.sharedInstance.configuration = config
+        
+        // Get the root view controller from the main actor
+        let rootViewController: UIViewController? = await MainActor.run {
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let rootViewController = windowScene.windows.first?.rootViewController else {
+                return nil
+            }
+            return rootViewController
+        }
+        
+        guard let rootViewController = rootViewController else {
+            throw NSError(
+                domain: "FirebaseService",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "No root view controller found"]
+            )
+        }
+        
+        // Start Google Sign In flow
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+        
+        guard let idToken = result.user.idToken?.tokenString else {
+            throw NSError(
+                domain: "FirebaseService",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to get ID token"]
+            )
+        }
+        
+        // Create Firebase credential
+        let credential = GoogleAuthProvider.credential(
+            withIDToken: idToken,
+            accessToken: result.user.accessToken.tokenString
+        )
+        
+        // Try to sign in with Firebase
+        let authResult = try await Auth.auth().signIn(with: credential)
+        
+        // Get display name from Google profile
+        let displayName: String? = result.user.profile?.givenName
+        
+        // Check if this is a new user by trying to fetch their document
+        let isNewUser = try await userService.fetchUser(withId: authResult.user.uid) == nil
+        
+        if isNewUser {
+            // Create new user document
+            try await userService.createUser(
+                withEmail: authResult.user.email ?? "",
+                uid: authResult.user.uid,
+                displayName: displayName
+            )
+        }
+        
+        await MainActor.run {
+            self.authUser = authResult.user
+            self.isAuthenticated = true
+            self.authError = nil
+        }
+        
+        return isNewUser ? .newUser : .existingUser
+    }
     
     // Facebook Sign In will be added here
     // func signInWithFacebook() { }
