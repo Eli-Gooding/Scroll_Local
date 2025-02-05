@@ -136,14 +136,13 @@ struct VideoRating: Identifiable {
                     "updatedAt": FieldValue.serverTimestamp()
                 ], forDocument: existingDoc.reference)
                 
-                // Update video counts
-                let updates: [String: Any] = [
-                    "helpfulCount": FieldValue.increment(Int64(existingRating.isHelpful ? -1 : 0)),
-                    "notHelpfulCount": FieldValue.increment(Int64(!existingRating.isHelpful ? -1 : 0)),
-                    "helpfulCount": FieldValue.increment(Int64(isHelpful ? 1 : 0)),
-                    "notHelpfulCount": FieldValue.increment(Int64(!isHelpful ? 1 : 0))
-                ]
-                batch.updateData(updates, forDocument: videoRef)
+                // Update video counts - decrement old rating and increment new rating
+                let helpfulDelta = isHelpful ? 1 : -1
+                let notHelpfulDelta = isHelpful ? -1 : 1
+                batch.updateData([
+                    "helpfulCount": FieldValue.increment(Int64(helpfulDelta)),
+                    "notHelpfulCount": FieldValue.increment(Int64(notHelpfulDelta))
+                ], forDocument: videoRef)
             }
         } else {
             // Add new rating

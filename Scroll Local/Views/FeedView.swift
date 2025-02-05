@@ -1,5 +1,6 @@
 import SwiftUI
 import AVKit
+import Firebase
 
 struct FeedView: View {
     @StateObject private var viewModel = FeedViewModel()
