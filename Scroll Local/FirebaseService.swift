@@ -87,7 +87,7 @@ class FirebaseService: ObservableObject {
         }
     }
     
-    func signUp(email: String, password: String) async throws {
+    func signUp(email: String, password: String, username: String? = nil) async throws {
         #if DEBUG
         print("FirebaseService: Attempting sign up with email: \(email)")
         #endif
@@ -96,7 +96,11 @@ class FirebaseService: ObservableObject {
             let result = try await Auth.auth().createUser(withEmail: email, password: password)
             
             // Create the user document in Firestore
-            try await userService.createUser(withEmail: email, uid: result.user.uid)
+            try await userService.createUser(
+                withEmail: email,
+                uid: result.user.uid,
+                displayName: username
+            )
             
             await MainActor.run {
                 self.authUser = result.user
