@@ -53,7 +53,7 @@ struct VideoSave: Identifiable {
             // Remove save
             batch.deleteDocument(existingDoc.reference)
             batch.updateData([
-                "saveCount": FieldValue.increment(Int64(-1))
+                "save_count": FieldValue.increment(Int64(-1))
             ], forDocument: videoRef)
             
             try await batch.commit()
@@ -69,7 +69,7 @@ struct VideoSave: Identifiable {
             
             batch.setData(data, forDocument: newSaveRef)
             batch.updateData([
-                "saveCount": FieldValue.increment(Int64(1))
+                "save_count": FieldValue.increment(Int64(1))
             ], forDocument: videoRef)
             
             try await batch.commit()
@@ -140,8 +140,8 @@ struct VideoRating: Identifiable {
                 let helpfulDelta = isHelpful ? 1 : -1
                 let notHelpfulDelta = isHelpful ? -1 : 1
                 batch.updateData([
-                    "helpfulCount": FieldValue.increment(Int64(helpfulDelta)),
-                    "notHelpfulCount": FieldValue.increment(Int64(notHelpfulDelta))
+                    "helpful_count": FieldValue.increment(Int64(helpfulDelta)),
+                    "not_helpful_count": FieldValue.increment(Int64(notHelpfulDelta))
                 ], forDocument: videoRef)
             }
         } else {
@@ -157,7 +157,7 @@ struct VideoRating: Identifiable {
             
             batch.setData(data, forDocument: newRatingRef)
             batch.updateData([
-                isHelpful ? "helpfulCount" : "notHelpfulCount": FieldValue.increment(Int64(1))
+                isHelpful ? "helpful_count" : "not_helpful_count": FieldValue.increment(Int64(1))
             ], forDocument: videoRef)
         }
         

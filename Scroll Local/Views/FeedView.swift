@@ -59,9 +59,9 @@ struct FeedView: View {
                         ScrollView(.vertical, showsIndicators: false) {
                             LazyVStack(spacing: 0) {
                                 if selectedFeed == 0 {
-                                    FollowingFeedContent(videos: viewModel.videos, currentIndex: $currentIndex)
+                                    FollowingFeedContent(videos: viewModel.videos, currentIndex: $currentIndex, viewModel: viewModel)
                                 } else {
-                                    LocalAreaFeedContent(videos: viewModel.videos, currentIndex: $currentIndex)
+                                    LocalAreaFeedContent(videos: viewModel.videos, currentIndex: $currentIndex, viewModel: viewModel)
                                 }
                             }
                             .scrollTargetLayout()
@@ -83,10 +83,11 @@ struct FeedView: View {
 struct FollowingFeedContent: View {
     let videos: [Video]
     @Binding var currentIndex: Int
+    @ObservedObject var viewModel: FeedViewModel
     
     var body: some View {
         ForEach(Array(videos.enumerated()), id: \.element.id) { index, video in
-            VideoCard(video: video, index: index)
+            VideoCard(video: video, index: index, viewModel: viewModel)
                 .frame(maxWidth: .infinity)
                 .containerRelativeFrame(.vertical)
                 .id(index)
@@ -97,10 +98,11 @@ struct FollowingFeedContent: View {
 struct LocalAreaFeedContent: View {
     let videos: [Video]
     @Binding var currentIndex: Int
+    @ObservedObject var viewModel: FeedViewModel
     
     var body: some View {
         ForEach(Array(videos.enumerated()), id: \.element.id) { index, video in
-            VideoCard(video: video, index: index)
+            VideoCard(video: video, index: index, viewModel: viewModel)
                 .frame(maxWidth: .infinity)
                 .containerRelativeFrame(.vertical)
                 .id(index)
@@ -116,11 +118,12 @@ struct VideoCard: View {
     @State private var showRating = false
     @State private var isDescriptionExpanded = false
     @State private var player: AVPlayer?
-    @StateObject private var viewModel = FeedViewModel()
+    @ObservedObject var viewModel: FeedViewModel
     
-    init(video: Video, index: Int) {
+    init(video: Video, index: Int, viewModel: FeedViewModel) {
         self.video = video
         self.index = index
+        self.viewModel = viewModel
         if let url = URL(string: video.videoUrl) {
             let player = AVPlayer(url: url)
             player.isMuted = true // Muted by default for better UX

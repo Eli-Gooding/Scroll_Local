@@ -27,9 +27,9 @@ struct Video {
     let location: GeoPoint
     let createdAt: Date
     var views: Int
-    var saveCount: Int         // Total number of saves
-    var helpfulCount: Int      // Total number of helpful ratings
-    var notHelpfulCount: Int   // Total number of not helpful ratings
+    var save_count: Int         // Total number of saves
+    var helpful_count: Int      // Total number of helpful ratings
+    var not_helpful_count: Int   // Total number of not helpful ratings
     var tags: [String]
     var isPublic: Bool
 }

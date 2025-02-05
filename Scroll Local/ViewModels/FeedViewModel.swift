@@ -4,7 +4,9 @@ import FirebaseAuth
 
 @MainActor
 class FeedViewModel: ObservableObject {
-    @Published var videos: [Video] = []
+    // Make videos published to ensure UI updates
+    @Published private(set) var videos: [Video] = []
+
     @Published var isLoading = false
     @Published var error: Error?
     @Published private var savedVideoIds: Set<String> = []
@@ -17,6 +19,33 @@ class FeedViewModel: ObservableObject {
     init() {
         Task {
             await loadUserInteractions()
+        }
+    }
+    
+    // Refresh video data to get latest counts
+    private func refreshVideoData() async {
+        guard !videos.isEmpty else { return }
+        
+        do {
+            let videoIds = videos.map { $0.id }
+            let chunkedIds = stride(from: 0, to: videoIds.count, by: 10).map {
+                Array(videoIds[$0..<min($0 + 10, videoIds.count)])
+            }
+            
+            for chunk in chunkedIds {
+                let snapshot = try await db.collection("videos")
+                    .whereField(FieldPath.documentID(), in: chunk)
+                    .getDocuments()
+                
+                for document in snapshot.documents {
+                    if let index = videos.firstIndex(where: { $0.id == document.documentID }),
+                       let updatedVideo = Video(id: document.documentID, data: document.data()) {
+                        videos[index] = updatedVideo
+                    }
+                }
+            }
+        } catch {
+            print("Error refreshing video data: \(error)")
         }
     }
     
@@ -84,7 +113,8 @@ class FeedViewModel: ObservableObject {
                 return video
             }
             
-            // Fetch user interactions for these videos
+            // Refresh video data and fetch user interactions
+            await refreshVideoData()
             await fetchUserInteractions(for: videos.compactMap { $0.id }, userId: currentUserId)
             
             print("Successfully parsed \(videos.count) videos")
@@ -128,24 +158,29 @@ class FeedViewModel: ObservableObject {
     
     // Toggle save for video
     func toggleSave(for videoId: String) async {
+        print("Toggling save for video: \(videoId)")
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
         do {
             let isSaved = try await VideoSave.toggleSave(userId: currentUserId, videoId: videoId)
+            print("Save operation completed, isSaved: \(isSaved)")
+            
+            // Get the latest video data from Firebase
+            let videoDoc = try await db.collection("videos").document(videoId).getDocument()
+            print("Retrieved latest video data from Firebase")
+            
+            if let updatedVideo = Video(id: videoId, data: videoDoc.data() ?? [:]) {
+                print("Updated video data: save count = \(updatedVideo.saveCount)")
+                if let index = videos.firstIndex(where: { $0.id == videoId }) {
+                    videos[index] = updatedVideo
+                }
+            }
             
             // Update local saved state
             if isSaved {
                 savedVideoIds.insert(videoId)
-                // Update local save count
-                if let index = videos.firstIndex(where: { $0.id == videoId }) {
-                    videos[index].saveCount += 1
-                }
             } else {
                 savedVideoIds.remove(videoId)
-                // Update local save count
-                if let index = videos.firstIndex(where: { $0.id == videoId }) {
-                    videos[index].saveCount -= 1
-                }
             }
         } catch {
             print("Error toggling save: \(error)")
@@ -236,7 +271,8 @@ class FeedViewModel: ObservableObject {
                 Video(id: document.documentID, data: document.data())
             }
             
-            // Fetch user interactions for new videos
+            // Refresh video data and fetch user interactions for new videos
+            await refreshVideoData()
             if let currentUserId = Auth.auth().currentUser?.uid {
                 await fetchUserInteractions(for: fetchedVideos.compactMap { $0.id }, userId: currentUserId)
             }
