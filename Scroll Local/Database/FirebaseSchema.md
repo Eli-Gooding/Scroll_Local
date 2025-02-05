@@ -27,10 +27,33 @@ struct Video {
     let location: GeoPoint
     let createdAt: Date
     var views: Int
-    var likes: Int
-    var shares: Int
+    var saveCount: Int         // Total number of saves
+    var helpfulCount: Int      // Total number of helpful ratings
+    var notHelpfulCount: Int   // Total number of not helpful ratings
     var tags: [String]
     var isPublic: Bool
+}
+```
+
+### VideoSaves Collection
+```swift
+struct VideoSave {
+    let id: String
+    let userId: String          // Reference to users collection
+    let videoId: String         // Reference to videos collection
+    let createdAt: Date
+}
+```
+
+### VideoRatings Collection
+```swift
+struct VideoRating {
+    let id: String
+    let userId: String          // Reference to users collection
+    let videoId: String         // Reference to videos collection
+    let isHelpful: Bool        // true for helpful, false for not helpful
+    let createdAt: Date
+    let updatedAt: Date
 }
 ```
 

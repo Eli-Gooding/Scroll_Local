@@ -198,7 +198,18 @@ struct VideoCard: View {
                     
                     // Right side: Interaction buttons
                     VStack(spacing: 20) {
-                        InteractionButton(icon: "bookmark.fill", count: "\(video.saveCount)")
+                        InteractionButton(
+                            icon: "bookmark.fill",
+                            count: "\(video.saveCount)",
+                            isActive: viewModel.isVideoSaved(video.id ?? "")
+                        )
+                        .onTapGesture {
+                            if let id = video.id {
+                                Task {
+                                    await viewModel.toggleSave(for: id)
+                                }
+                            }
+                        }
                         
                         InteractionButton(icon: "bubble.left.fill", count: "\(video.commentCount)")
                             .onTapGesture {
@@ -210,10 +221,15 @@ struct VideoCard: View {
                         VStack(spacing: 12) {
                             InteractionButton(icon: "square.and.arrow.up.fill", count: "Share")
                             
-                            InteractionButton(icon: "hand.thumbsup.fill", count: "Rate")
-                                .onTapGesture {
-                                    showRating = true
-                                }
+                            let rating = viewModel.getVideoRating(video.id ?? "")
+                            InteractionButton(
+                                icon: rating == -1 ? "hand.thumbsdown.fill" : "hand.thumbsup.fill",
+                                count: "Rate",
+                                isActive: rating != 0
+                            )
+                            .onTapGesture {
+                                showRating = true
+                            }
                         }
                     }
                 }
@@ -332,11 +348,13 @@ struct CommentRow: View {
 struct InteractionButton: View {
     let icon: String
     let count: String
+    var isActive: Bool = false
     
     var body: some View {
         VStack(spacing: 2) {
             Image(systemName: icon)
                 .font(.title3)
+                .foregroundStyle(isActive ? Color.accentColor : .white)
             Text(count)
                 .font(.custom("AvenirNext-Medium", size: 12))
         }

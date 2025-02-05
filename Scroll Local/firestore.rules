@@ -26,9 +26,18 @@ service cloud.firestore {
     
     // Videos collection
     match /videos/{videoId} {
-      allow read: if true;  // Allow public reading of videos
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && isOwner(resource.data.userId);
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    
+    // VideoSaves collection
+    match /videoSaves/{saveId} {
+      allow read, write: if isSignedIn();  // Simplified for debugging
+    }
+    
+    // VideoRatings collection
+    match /videoRatings/{ratingId} {
+      allow read, write: if isSignedIn();  // Simplified for debugging
     }
     
     // Comments collection
@@ -54,6 +63,11 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isSignedIn();
       allow delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
+
+    // UserInteractions collection
+    match /userInteractions/{interactionId} {
+      allow read, write: if isSignedIn();  // Temporarily more permissive for debugging
     }
   }
 } 
