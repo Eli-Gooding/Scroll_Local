@@ -7,18 +7,62 @@ class FeedViewModel: ObservableObject {
     @Published var videos: [Video] = []
     @Published var isLoading = false
     @Published var error: Error?
-    @Published var savedVideoIds: Set<String> = []
-    @Published var videoRatings: [String: Bool] = [:] // videoId: isHelpful
+    @Published private var savedVideoIds: Set<String> = []
+    @Published private var videoRatings: [String: Bool] = [:]
     
     private let db = Firestore.firestore()
     private var lastDocument: DocumentSnapshot?
     private let limit = 5 // Number of videos to fetch at a time
+    
+    init() {
+        Task {
+            await loadUserInteractions()
+        }
+    }
+    
+    // Load user interactions for all videos
+    private func loadUserInteractions() async {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        
+        do {
+            // Fetch all video IDs
+            let videoIds = videos.map { $0.id }
+            
+            // Fetch saves
+            let savesSnapshot = try await db.collection("videoSaves")
+                .whereField("userId", isEqualTo: currentUserId)
+                .getDocuments()
+            
+            savedVideoIds = Set(savesSnapshot.documents.compactMap { doc in
+                VideoSave(id: doc.documentID, data: doc.data())?.videoId
+            })
+            
+            // Fetch ratings
+            let ratingsSnapshot = try await db.collection("videoRatings")
+                .whereField("userId", isEqualTo: currentUserId)
+                .getDocuments()
+            
+            videoRatings = Dictionary(uniqueKeysWithValues: ratingsSnapshot.documents.compactMap { doc in
+                if let rating = VideoRating(id: doc.documentID, data: doc.data()) {
+                    return (rating.videoId, rating.isHelpful)
+                }
+                return nil
+            })
+        } catch {
+            print("Error loading user interactions: \(error)")
+        }
+    }
     
     // Fetch initial videos
     func fetchVideos() async {
         print("Starting to fetch videos...")
         isLoading = true
         error = nil
+        
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            isLoading = false
+            return
+        }
         
         do {
             let query = db.collection("videos")
@@ -41,9 +85,7 @@ class FeedViewModel: ObservableObject {
             }
             
             // Fetch user interactions for these videos
-            if let currentUserId = Auth.auth().currentUser?.uid {
-                await fetchUserInteractions(for: videos.compactMap { $0.id }, userId: currentUserId)
-            }
+            await fetchUserInteractions(for: videos.compactMap { $0.id }, userId: currentUserId)
             
             print("Successfully parsed \(videos.count) videos")
         } catch {
@@ -91,16 +133,19 @@ class FeedViewModel: ObservableObject {
         do {
             let isSaved = try await VideoSave.toggleSave(userId: currentUserId, videoId: videoId)
             
-            // Update local state
+            // Update local saved state
             if isSaved {
                 savedVideoIds.insert(videoId)
+                // Update local save count
+                if let index = videos.firstIndex(where: { $0.id == videoId }) {
+                    videos[index].saveCount += 1
+                }
             } else {
                 savedVideoIds.remove(videoId)
-            }
-            
-            // Update video in the list if it exists
-            if let index = videos.firstIndex(where: { $0.id == videoId }) {
-                videos[index].saveCount += isSaved ? 1 : -1
+                // Update local save count
+                if let index = videos.firstIndex(where: { $0.id == videoId }) {
+                    videos[index].saveCount -= 1
+                }
             }
         } catch {
             print("Error toggling save: \(error)")
@@ -112,27 +157,34 @@ class FeedViewModel: ObservableObject {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
         do {
+            // Get the current rating before making any changes
+            let oldRating = videoRatings[videoId]
+            
             try await VideoRating.updateRating(userId: currentUserId, videoId: videoId, isHelpful: isHelpful)
             
-            // Update local state
+            // Update local rating state
             videoRatings[videoId] = isHelpful
             
-            // Update video in the list if it exists
+            // Update local counts
             if let index = videos.firstIndex(where: { $0.id == videoId }) {
-                let oldRating = videoRatings[videoId]
                 if let oldRating = oldRating {
-                    // Remove old rating count
-                    if oldRating {
-                        videos[index].helpfulCount -= 1
-                    } else {
-                        videos[index].notHelpfulCount -= 1
+                    // If changing from helpful to not helpful or vice versa
+                    if oldRating != isHelpful {
+                        if isHelpful {
+                            videos[index].helpfulCount += 1
+                            videos[index].notHelpfulCount -= 1
+                        } else {
+                            videos[index].helpfulCount -= 1
+                            videos[index].notHelpfulCount += 1
+                        }
                     }
-                }
-                // Add new rating count
-                if isHelpful {
-                    videos[index].helpfulCount += 1
                 } else {
-                    videos[index].notHelpfulCount += 1
+                    // New rating
+                    if isHelpful {
+                        videos[index].helpfulCount += 1
+                    } else {
+                        videos[index].notHelpfulCount += 1
+                    }
                 }
             }
         } catch {
@@ -147,10 +199,10 @@ class FeedViewModel: ObservableObject {
     
     // Helper function to get video rating
     func getVideoRating(_ videoId: String) -> Int {
-        guard let isHelpful = videoRatings[videoId] else {
-            return 0
+        if let isHelpful = videoRatings[videoId] {
+            return isHelpful ? 1 : -1
         }
-        return isHelpful ? 1 : -1
+        return 0
     }
     
     // Increment view count

@@ -2,7 +2,7 @@ import Foundation
 import FirebaseFirestore
 
 // Make the Video model public so it can be accessed from other files
-public struct Video: Identifiable {
+public struct Video: Identifiable, Equatable {
     public var id: String?
     public let userId: String
     public let title: String
