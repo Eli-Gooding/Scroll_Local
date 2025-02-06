@@ -115,6 +115,7 @@ struct VideoCard: View {
     let index: Int
     @State private var isWiggling = false
     @State private var showComments = false
+    @StateObject private var commentViewModel = CommentViewModel()
     @State private var showRating = false
     @State private var isDescriptionExpanded = false
     @State private var player: AVPlayer?
@@ -149,10 +150,11 @@ struct VideoCard: View {
                                     player.seek(to: .zero)
                                     player.play()
                                 }
-                            // Increment view count
+                            // Increment view count and load comment count
                             if let id = video.id {
                                 Task {
                                     await viewModel.incrementViews(for: id)
+                                    await commentViewModel.loadCommentCount(for: id)
                                 }
                             }
                         }
@@ -205,18 +207,19 @@ struct VideoCard: View {
                         InteractionButton(
                             icon: "bookmark.fill",
                             count: "\(video.saveCount)",
-                            isActive: viewModel.isVideoSaved(video.id ?? "")
+                            isActive: video.id.map(viewModel.isVideoSaved) ?? false
                         )
                         .onTapGesture {
-                            if let id = video.id {
+                            if let videoId = video.id {
                                 Task {
-                                    await viewModel.toggleSave(for: id)
+                                    await viewModel.toggleSave(for: videoId)
                                 }
                             }
                         }
                         
-                        InteractionButton(icon: "bubble.left.fill", count: "\(video.commentCount)")
+                        InteractionButton(icon: "bubble.left.fill", count: "\(commentViewModel.commentCount)")
                             .onTapGesture {
+                                commentViewModel.loadComments(for: video.id ?? "")
                                 withAnimation(.spring()) {
                                     showComments = true
                                 }
@@ -225,7 +228,7 @@ struct VideoCard: View {
                         VStack(spacing: 12) {
                             InteractionButton(icon: "square.and.arrow.up.fill", count: "Share")
                             
-                            let rating = viewModel.getVideoRating(video.id ?? "")
+                            let rating = video.id.map(viewModel.getVideoRating) ?? 0
                             InteractionButton(
                                 icon: rating == -1 ? "hand.thumbsdown.fill" : "hand.thumbsup.fill",
                                 count: "Rate",
@@ -252,22 +255,24 @@ struct VideoCard: View {
             .shadow(radius: 5)
             .padding(.horizontal, 8)
             .sheet(isPresented: $showComments) {
-                CommentsSheet()
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
+                if let videoId = video.id {
+                    CommentView(videoId: videoId)
+                        .presentationDetents([.medium, .large])
+                        .presentationDragIndicator(.visible)
+                }
             }
             .alert("Rate this content", isPresented: $showRating) {
                 Button("Helpful") {
-                    if let id = video.id {
+                    if let videoId = video.id {
                         Task {
-                            await viewModel.updateRating(for: id, isHelpful: true)
+                            await viewModel.updateRating(for: videoId, isHelpful: true)
                         }
                     }
                 }
                 Button("Unhelpful") {
-                    if let id = video.id {
+                    if let videoId = video.id {
                         Task {
-                            await viewModel.updateRating(for: id, isHelpful: false)
+                            await viewModel.updateRating(for: videoId, isHelpful: false)
                         }
                     }
                 }

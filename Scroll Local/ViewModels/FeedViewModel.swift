@@ -27,7 +27,7 @@ class FeedViewModel: ObservableObject {
         guard !videos.isEmpty else { return }
         
         do {
-            let videoIds = videos.map { $0.id }
+            let videoIds = videos.compactMap { $0.id }
             let chunkedIds = stride(from: 0, to: videoIds.count, by: 10).map {
                 Array(videoIds[$0..<min($0 + 10, videoIds.count)])
             }
@@ -46,6 +46,33 @@ class FeedViewModel: ObservableObject {
             }
         } catch {
             print("Error refreshing video data: \(error)")
+        }
+    }
+    
+    // Add real-time listener for video updates
+    private func addVideoListener(for videoId: String) {
+        db.collection("videos").document(videoId)
+            .addSnapshotListener { [weak self] documentSnapshot, error in
+                guard let self = self,
+                      let document = documentSnapshot,
+                      document.exists,
+                      let updatedVideo = Video(id: document.documentID, data: document.data() ?? [:]),
+                      let index = self.videos.firstIndex(where: { $0.id == document.documentID }) else {
+                    return
+                }
+                
+                Task { @MainActor in
+                    self.videos[index] = updatedVideo
+                }
+            }
+    }
+    
+    // Add listeners for all visible videos
+    private func addVideoListeners() {
+        for video in videos {
+            if let videoId = video.id {
+                addVideoListener(for: videoId)
+            }
         }
     }
     
@@ -93,6 +120,9 @@ class FeedViewModel: ObservableObject {
             return
         }
         
+        // Remove existing listeners before fetching new videos
+        videos.removeAll()
+        
         do {
             let query = db.collection("videos")
                 .order(by: "created_at", descending: true)
@@ -112,6 +142,9 @@ class FeedViewModel: ObservableObject {
                 }
                 return video
             }
+            
+            // Add listeners for the new videos
+            addVideoListeners()
             
             // Refresh video data and fetch user interactions
             await refreshVideoData()

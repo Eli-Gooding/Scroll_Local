@@ -38,7 +38,7 @@ struct Scroll_LocalApp: App {
             .onAppear {
                 #if DEBUG
                 print("App appeared, checking auth state")
-                if isPreview {
+                if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != nil {
                     PreviewFirebaseService.shared.debugPrintAuthState()
                 } else {
                     firebaseService.debugPrintAuthState()
