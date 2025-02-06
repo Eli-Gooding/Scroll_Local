@@ -1,5 +1,6 @@
 import SwiftUI
 import AVKit
+import Firebase
 
 struct FeedView: View {
     @StateObject private var viewModel = FeedViewModel()
@@ -58,9 +59,9 @@ struct FeedView: View {
                         ScrollView(.vertical, showsIndicators: false) {
                             LazyVStack(spacing: 0) {
                                 if selectedFeed == 0 {
-                                    FollowingFeedContent(videos: viewModel.videos, currentIndex: $currentIndex)
+                                    FollowingFeedContent(videos: viewModel.videos, currentIndex: $currentIndex, viewModel: viewModel)
                                 } else {
-                                    LocalAreaFeedContent(videos: viewModel.videos, currentIndex: $currentIndex)
+                                    LocalAreaFeedContent(videos: viewModel.videos, currentIndex: $currentIndex, viewModel: viewModel)
                                 }
                             }
                             .scrollTargetLayout()
@@ -82,10 +83,11 @@ struct FeedView: View {
 struct FollowingFeedContent: View {
     let videos: [Video]
     @Binding var currentIndex: Int
+    @ObservedObject var viewModel: FeedViewModel
     
     var body: some View {
         ForEach(Array(videos.enumerated()), id: \.element.id) { index, video in
-            VideoCard(video: video, index: index)
+            VideoCard(video: video, index: index, viewModel: viewModel)
                 .frame(maxWidth: .infinity)
                 .containerRelativeFrame(.vertical)
                 .id(index)
@@ -96,10 +98,11 @@ struct FollowingFeedContent: View {
 struct LocalAreaFeedContent: View {
     let videos: [Video]
     @Binding var currentIndex: Int
+    @ObservedObject var viewModel: FeedViewModel
     
     var body: some View {
         ForEach(Array(videos.enumerated()), id: \.element.id) { index, video in
-            VideoCard(video: video, index: index)
+            VideoCard(video: video, index: index, viewModel: viewModel)
                 .frame(maxWidth: .infinity)
                 .containerRelativeFrame(.vertical)
                 .id(index)
@@ -115,11 +118,12 @@ struct VideoCard: View {
     @State private var showRating = false
     @State private var isDescriptionExpanded = false
     @State private var player: AVPlayer?
-    @StateObject private var viewModel = FeedViewModel()
+    @ObservedObject var viewModel: FeedViewModel
     
-    init(video: Video, index: Int) {
+    init(video: Video, index: Int, viewModel: FeedViewModel) {
         self.video = video
         self.index = index
+        self.viewModel = viewModel
         if let url = URL(string: video.videoUrl) {
             let player = AVPlayer(url: url)
             player.isMuted = true // Muted by default for better UX
@@ -198,7 +202,18 @@ struct VideoCard: View {
                     
                     // Right side: Interaction buttons
                     VStack(spacing: 20) {
-                        InteractionButton(icon: "bookmark.fill", count: "\(video.saveCount)")
+                        InteractionButton(
+                            icon: "bookmark.fill",
+                            count: "\(video.saveCount)",
+                            isActive: viewModel.isVideoSaved(video.id ?? "")
+                        )
+                        .onTapGesture {
+                            if let id = video.id {
+                                Task {
+                                    await viewModel.toggleSave(for: id)
+                                }
+                            }
+                        }
                         
                         InteractionButton(icon: "bubble.left.fill", count: "\(video.commentCount)")
                             .onTapGesture {
@@ -210,10 +225,15 @@ struct VideoCard: View {
                         VStack(spacing: 12) {
                             InteractionButton(icon: "square.and.arrow.up.fill", count: "Share")
                             
-                            InteractionButton(icon: "hand.thumbsup.fill", count: "Rate")
-                                .onTapGesture {
-                                    showRating = true
-                                }
+                            let rating = viewModel.getVideoRating(video.id ?? "")
+                            InteractionButton(
+                                icon: rating == -1 ? "hand.thumbsdown.fill" : "hand.thumbsup.fill",
+                                count: "Rate",
+                                isActive: rating != 0
+                            )
+                            .onTapGesture {
+                                showRating = true
+                            }
                         }
                     }
                 }
@@ -332,11 +352,13 @@ struct CommentRow: View {
 struct InteractionButton: View {
     let icon: String
     let count: String
+    var isActive: Bool = false
     
     var body: some View {
         VStack(spacing: 2) {
             Image(systemName: icon)
                 .font(.title3)
+                .foregroundStyle(isActive ? Color.accentColor : .white)
             Text(count)
                 .font(.custom("AvenirNext-Medium", size: 12))
         }

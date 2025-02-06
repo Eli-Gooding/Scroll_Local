@@ -291,5 +291,4 @@ struct LoginView: View {
 
 #Preview {
     LoginView()
-        .withPreviewFirebase(isAuthenticated: false)
 } 
