@@ -12,8 +12,6 @@ struct CommentView: View {
     @State private var showingEmojiPicker = false
     @State private var selectedCommentId: String?
     
-    // Common emojis for quick reactions
-    private let quickEmojis = ["👍", "❤️", "😂", "😮", "👏", "🔥"]
     
     var body: some View {
         VStack {
@@ -77,12 +75,10 @@ struct CommentCell: View {
     
     @State private var showingEmojiPicker = false
     
-    private func groupedReactions() -> [(emoji: String, count: Int)] {
-        let reactions = comment.reactions ?? []
-        let grouped = Dictionary(grouping: reactions) { $0.emoji }
-        return grouped.map { (emoji: $0.key, count: $0.value.count) }
-            .sorted { $0.count > $1.count }
-    }
+    // Common emojis for quick reactions
+    private let quickEmojis = ["👍", "❤️", "🎉", "🚀", "👏"]
+    
+
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -100,18 +96,17 @@ struct CommentCell: View {
             Text(comment.text)
                 .font(.body)
             
-            // Reactions
-            if !groupedReactions().isEmpty {
-                HStack {
-                    ForEach(groupedReactions(), id: \.emoji) { reaction in
+            // Grouped reactions in Slack style
+            HStack(spacing: 4) {
+                if !comment.groupedReactions.isEmpty {
+                    ForEach(comment.groupedReactions, id: \.emoji) { reaction in
                         Button(action: {
                             onEmojiSelected(reaction.emoji)
                         }) {
-                            HStack {
+                            HStack(spacing: 4) {
                                 Text(reaction.emoji)
-                                Text("\(reaction.count)")
+                                Text(String(reaction.count))
                                     .font(.caption)
-                                    .foregroundColor(.gray)
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -120,33 +115,33 @@ struct CommentCell: View {
                         }
                     }
                 }
-            }
-            
-            // Quick reaction buttons
-            HStack {
-                ForEach(["👍", "❤️", "😂"], id: \.self) { emoji in
-                    Button(action: {
-                        onEmojiSelected(emoji)
-                    }) {
-                        Text(emoji)
-                            .font(.title3)
-                    }
-                    .padding(.trailing, 4)
-                }
                 
-                Button(action: {
-                    showingEmojiPicker.toggle()
-                }) {
+                // Add reaction button
+                Button(action: { showingEmojiPicker.toggle() }) {
                     Image(systemName: "face.smiling")
                         .foregroundColor(.gray)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
                 }
                 .popover(isPresented: $showingEmojiPicker) {
-                    EmojiPickerView { emoji in
-                        onEmojiSelected(emoji)
-                        showingEmojiPicker = false
+                    VStack {
+                        HStack {
+                            ForEach(quickEmojis, id: \.self) { emoji in
+                                Button(action: {
+                                    onEmojiSelected(emoji)
+                                    showingEmojiPicker = false
+                                }) {
+                                    Text(emoji)
+                                        .font(.title2)
+                                }
+                                .padding(8)
+                            }
+                        }
+                        .padding()
                     }
                 }
             }
+            .padding(.top, 4)
         }
         .padding()
         .background(Color(.systemGray6))
