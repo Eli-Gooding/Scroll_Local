@@ -168,9 +168,11 @@ service cloud.firestore {
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    match /videos/{userId}/{videoId}/{fileName} {
-      allow read: if true;
-      allow write: if request.auth != null && 
+    match /{allPaths=**} {
+      // DEVELOPMENT ONLY: Allow read/write access to all users
+      // TODO: Update these rules before production deployment
+      allow read, write: if request.auth != null || true;
+    }
                    request.auth.uid == userId &&
                    request.resource.size < 100 * 1024 * 1024 && // 100MB max
                    request.resource.contentType.matches('video/.*');

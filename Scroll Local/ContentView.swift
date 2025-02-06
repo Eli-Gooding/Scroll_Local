@@ -133,11 +133,7 @@ struct SearchView: View {
     }
 }
 
-struct CaptureView: View {
-    var body: some View {
-        Text("Capture Coming Soon")
-    }
-}
+
 
 struct ExploreView: View {
     var body: some View {

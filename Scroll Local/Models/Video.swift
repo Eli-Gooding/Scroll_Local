@@ -18,6 +18,42 @@ public struct Video: Identifiable, Equatable {
     public var saveCount: Int
     public var commentCount: Int
     
+    public var firestoreData: [String: Any] {
+        return [
+            "user_id": userId,
+            "title": title,
+            "description": description,
+            "location": location,
+            "tags": tags,
+            "category": category,
+            "video_url": videoUrl,
+            "created_at": Timestamp(date: createdAt),
+            "views": views,
+            "helpful_count": helpfulCount,
+            "not_helpful_count": notHelpfulCount,
+            "save_count": saveCount,
+            "comment_count": commentCount
+        ]
+    }
+    
+    public init(userId: String, title: String, description: String, location: String,
+         tags: [String], category: String, videoUrl: String, createdAt: Date,
+         views: Int, helpfulCount: Int, notHelpfulCount: Int, saveCount: Int, commentCount: Int) {
+        self.userId = userId
+        self.title = title
+        self.description = description
+        self.location = location
+        self.tags = tags
+        self.category = category
+        self.videoUrl = videoUrl
+        self.createdAt = createdAt
+        self.views = views
+        self.helpfulCount = helpfulCount
+        self.notHelpfulCount = notHelpfulCount
+        self.saveCount = saveCount
+        self.commentCount = commentCount
+    }
+    
     public init?(id: String, data: [String: Any]) {
         self.id = id
         guard let userId = data["user_id"] as? String,
