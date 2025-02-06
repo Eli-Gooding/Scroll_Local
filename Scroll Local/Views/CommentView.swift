@@ -22,8 +22,12 @@ struct CommentView: View {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         ForEach(viewModel.comments) { comment in
                             CommentCell(comment: comment) { emoji in
-                                Task {
-                                    try? await viewModel.addReaction(to: comment.id, emoji: emoji)
+                                Task { @MainActor in
+                                    do {
+                                        try await viewModel.addReaction(to: comment.id, emoji: emoji)
+                                    } catch {
+                                        // Handle error if needed
+                                    }
                                 }
                             }
                         }
@@ -39,9 +43,14 @@ struct CommentView: View {
                     .padding(.horizontal)
                 
                 Button(action: {
-                    Task {
-                        try? await viewModel.addComment(videoId: videoId, text: newCommentText)
-                        newCommentText = ""
+                    let text = newCommentText // Capture the text
+                    Task { @MainActor in
+                        do {
+                            try await viewModel.addComment(videoId: videoId, text: text)
+                            newCommentText = ""
+                        } catch {
+                            // Handle error if needed
+                        }
                     }
                 }) {
                     Image(systemName: "paperplane.fill")
@@ -124,21 +133,11 @@ struct CommentCell: View {
                         .padding(.vertical, 4)
                 }
                 .popover(isPresented: $showingEmojiPicker) {
-                    VStack {
-                        HStack {
-                            ForEach(quickEmojis, id: \.self) { emoji in
-                                Button(action: {
-                                    onEmojiSelected(emoji)
-                                    showingEmojiPicker = false
-                                }) {
-                                    Text(emoji)
-                                        .font(.title2)
-                                }
-                                .padding(8)
-                            }
-                        }
-                        .padding()
-                    }
+                    EmojiPickerView(onEmojiSelected: { emoji in
+                        onEmojiSelected(emoji)
+                        showingEmojiPicker = false
+                    })
+                    .frame(width: 300, height: 400)
                 }
             }
             .padding(.top, 4)
@@ -149,40 +148,4 @@ struct CommentCell: View {
     }
 }
 
-struct EmojiPickerView: View {
-    let onEmojiSelected: (String) -> Void
-    
-    // Common emojis grouped by category
-    private let emojis = [
-        "Smileys": ["😀", "😃", "😄", "😁", "😅", "😂", "🤣", "😊", "😇"],
-        "Gestures": ["👍", "👎", "👏", "🙌", "🤝", "👊", "✌️", "🤞", "🤟"],
-        "Hearts": ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎"],
-        "Other": ["🔥", "💯", "💪", "🎉", "✨", "💫", "💥", "💢", "💦"]
-    ]
-    
-    var body: some View {
-        ScrollView {
-            LazyVGrid(columns: [
-                GridItem(.adaptive(minimum: 40))
-            ], spacing: 10) {
-                ForEach(Array(emojis.keys.sorted()), id: \.self) { category in
-                    Section(header: Text(category)
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .padding(.top)) {
-                        ForEach(emojis[category] ?? [], id: \.self) { emoji in
-                            Button(action: {
-                                onEmojiSelected(emoji)
-                            }) {
-                                Text(emoji)
-                                    .font(.title2)
-                            }
-                        }
-                    }
-                }
-            }
-            .padding()
-        }
-        .frame(width: 300, height: 400)
-    }
-}
+

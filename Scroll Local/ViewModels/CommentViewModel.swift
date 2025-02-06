@@ -116,36 +116,58 @@ class CommentViewModel: ObservableObject {
         // Update video's comment count
         let videoRef = db.collection("videos").document(videoId)
         try await videoRef.updateData([
-            "commentCount": FieldValue.increment(Int64(1))
+            "comment_count": FieldValue.increment(Int64(1))
         ])
+        
+        // Add comment to local state immediately
+        var updatedComment = comment
+        if let currentUser = Auth.auth().currentUser {
+            updatedComment.user = User(id: currentUser.uid, email: currentUser.email ?? "", displayName: currentUser.displayName ?? "User", createdAt: Date())
+        }
+        
+        let updatedComments = await MainActor.run { () -> [Comment] in
+            var currentComments = self.comments
+            currentComments.insert(updatedComment, at: 0)
+            return currentComments
+        }
+        
+        await MainActor.run {
+            self.comments = updatedComments
+        }
     }
     
     func addReaction(to commentId: String, emoji: String) async throws {
         if isPreviewMode {
-            var updatedComments = self.comments
-            if let index = updatedComments.firstIndex(where: { $0.id == commentId }) {
-                let previewReaction = Reaction(
-                    id: UUID().uuidString,
-                    userId: "preview_user",
-                    emoji: emoji,
-                    createdAt: Date(),
-                    commentId: commentId,
-                    user: User(id: "preview_user", email: "preview@example.com", displayName: "Preview User", createdAt: Date())
-                )
-                
-                var updatedComment = updatedComments[index]
-                if updatedComment.reactions == nil {
-                    updatedComment.reactions = []
+            let updatedComments = await MainActor.run { () -> [Comment] in
+                var currentComments = self.comments
+                if let index = currentComments.firstIndex(where: { $0.id == commentId }) {
+                    let previewReaction = Reaction(
+                        id: UUID().uuidString,
+                        userId: "preview_user",
+                        emoji: emoji,
+                        createdAt: Date(),
+                        commentId: commentId,
+                        user: User(id: "preview_user", email: "preview@example.com", displayName: "Preview User", createdAt: Date())
+                    )
+                    
+                    var updatedComment = currentComments[index]
+                    if updatedComment.reactions == nil {
+                        updatedComment.reactions = []
+                    }
+                    
+                    // Remove existing reaction with same emoji if it exists
+                    updatedComment.reactions?.removeAll(where: { $0.emoji == emoji && $0.userId == "preview_user" })
+                    // Add new reaction if it wasn't removed (toggle behavior)
+                    if updatedComment.reactions?.count == currentComments[index].reactions?.count {
+                        updatedComment.reactions?.append(previewReaction)
+                    }
+                    
+                    currentComments[index] = updatedComment
                 }
-                
-                // Remove existing reaction with same emoji if it exists
-                updatedComment.reactions?.removeAll(where: { $0.emoji == emoji && $0.userId == "preview_user" })
-                // Add new reaction if it wasn't removed (toggle behavior)
-                if updatedComment.reactions?.count == updatedComments[index].reactions?.count {
-                    updatedComment.reactions?.append(previewReaction)
-                }
-                
-                updatedComments[index] = updatedComment
+                return currentComments
+            }
+            
+            await MainActor.run {
                 self.comments = updatedComments
             }
             return
@@ -175,9 +197,39 @@ class CommentViewModel: ObservableObject {
             )
             
             try reactionRef.setData(from: reaction)
+            
+            // Update local state immediately
+            let updatedComments = await MainActor.run { () -> [Comment] in
+                var currentComments = self.comments
+                if let index = currentComments.firstIndex(where: { $0.id == commentId }) {
+                    var updatedComment = currentComments[index]
+                    var reactions = updatedComment.reactions ?? []
+                    reactions.append(reaction)
+                    updatedComment.reactions = reactions
+                    currentComments[index] = updatedComment
+                }
+                return currentComments
+            }
+            await MainActor.run {
+                self.comments = updatedComments
+            }
         } else {
             // Remove existing reaction
             try await existingReaction.documents.first?.reference.delete()
+            
+            // Update local state immediately
+            let updatedComments = await MainActor.run { () -> [Comment] in
+                var currentComments = self.comments
+                if let index = currentComments.firstIndex(where: { $0.id == commentId }) {
+                    var updatedComment = currentComments[index]
+                    updatedComment.reactions?.removeAll(where: { $0.emoji == emoji && $0.userId == userId })
+                    currentComments[index] = updatedComment
+                }
+                return currentComments
+            }
+            await MainActor.run {
+                self.comments = updatedComments
+            }
         }
     }
     
