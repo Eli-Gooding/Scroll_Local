@@ -10,22 +10,13 @@ import Firebase
 
 struct ContentView: View {
     @StateObject private var firebaseService = FirebaseService.shared
-    @Environment(\.isPreview) var isPreview
     
     var body: some View {
         Group {
-            if isPreview {
-                if PreviewFirebaseService.shared.isAuthenticated {
-                    MainTabView()
-                } else {
-                    LoginView()
-                }
+            if firebaseService.isAuthenticated {
+                MainTabView()
             } else {
-                if firebaseService.isAuthenticated {
-                    MainTabView()
-                } else {
-                    LoginView()
-                }
+                LoginView()
             }
         }
     }
@@ -162,5 +153,4 @@ struct SavedVideosView: View {
 
 #Preview {
     ContentView()
-        .withPreviewFirebase(isAuthenticated: true)
 }

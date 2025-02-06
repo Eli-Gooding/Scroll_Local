@@ -25,25 +25,14 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct Scroll_LocalApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var firebaseService = FirebaseService.shared
-    @Environment(\.isPreview) var isPreview
     
     var body: some Scene {
         WindowGroup {
             Group {
-                if isPreview {
-                    // Preview mode - use PreviewFirebaseService
-                    if (PreviewFirebaseService.shared.isAuthenticated) {
-                        ContentView()
-                    } else {
-                        LoginView()
-                    }
+                if firebaseService.isAuthenticated {
+                    ContentView()
                 } else {
-                    // Real mode - use FirebaseService
-                    if firebaseService.isAuthenticated {
-                        ContentView()
-                    } else {
-                        LoginView()
-                    }
+                    LoginView()
                 }
             }
             .onAppear {
