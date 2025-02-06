@@ -20,6 +20,26 @@ class CommentViewModel: ObservableObject {
         #endif
     }
     
+    @Published var commentCount: Int = 0
+    
+    func loadCommentCount(for videoId: String) async {
+        if isPreviewMode { return }
+        
+        do {
+            let snapshot = try await db.collection("comments")
+                .whereField("videoId", isEqualTo: videoId)
+                .whereField("isReply", isEqualTo: false)
+                .count
+                .getAggregation(source: .server)
+            
+            await MainActor.run {
+                self.commentCount = Int(truncating: snapshot.count)
+            }
+        } catch {
+            print("Error loading comment count: \(error)")
+        }
+    }
+    
     func loadComments(for videoId: String) {
         isLoading = true
         
@@ -51,9 +71,23 @@ class CommentViewModel: ObservableObject {
                     return
                 }
                 
-                self.comments = querySnapshot?.documents.compactMap { document -> Comment? in
+                let newComments = querySnapshot?.documents.compactMap { document -> Comment? in
                     try? document.data(as: Comment.self)
                 } ?? []
+                
+                self.comments = newComments
+                self.commentCount = newComments.count
+                
+                // Update video document with actual comment count
+                Task {
+                    do {
+                        try await self.db.collection("videos").document(videoId).updateData([
+                            "comment_count": newComments.count
+                        ])
+                    } catch {
+                        print("Error updating video comment count: \(error)")
+                    }
+                }
                 
                 // Load user data for each comment
                 Task { @MainActor in

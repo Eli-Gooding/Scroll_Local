@@ -115,6 +115,7 @@ struct VideoCard: View {
     let index: Int
     @State private var isWiggling = false
     @State private var showComments = false
+    @StateObject private var commentViewModel = CommentViewModel()
     @State private var showRating = false
     @State private var isDescriptionExpanded = false
     @State private var player: AVPlayer?
@@ -149,10 +150,11 @@ struct VideoCard: View {
                                     player.seek(to: .zero)
                                     player.play()
                                 }
-                            // Increment view count
+                            // Increment view count and load comment count
                             if let id = video.id {
                                 Task {
                                     await viewModel.incrementViews(for: id)
+                                    await commentViewModel.loadCommentCount(for: id)
                                 }
                             }
                         }
@@ -215,8 +217,9 @@ struct VideoCard: View {
                             }
                         }
                         
-                        InteractionButton(icon: "bubble.left.fill", count: "\(video.commentCount)")
+                        InteractionButton(icon: "bubble.left.fill", count: "\(commentViewModel.commentCount)")
                             .onTapGesture {
+                                commentViewModel.loadComments(for: video.id ?? "")
                                 withAnimation(.spring()) {
                                     showComments = true
                                 }
