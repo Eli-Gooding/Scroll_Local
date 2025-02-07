@@ -9,6 +9,7 @@ struct VideoPreviewView: View {
     let videoURL: URL
     @State private var player: AVPlayer?
     @State private var isUploading = false
+    @State private var showMetadataForm = false
     @Environment(\.presentationMode) var presentationMode
     @StateObject private var locationManager = LocationManager()
     
@@ -27,13 +28,13 @@ struct VideoPreviewView: View {
                 }
                 
                 Button(action: {
-                    uploadVideo()
+                    showMetadataForm = true
                 }) {
                     if isUploading {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle())
                     } else {
-                        Text("Upload Video")
+                        Text("Continue")
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -52,13 +53,18 @@ struct VideoPreviewView: View {
                     presentationMode.wrappedValue.dismiss()
                 }
             )
+            .sheet(isPresented: $showMetadataForm) {
+                VideoMetadataForm { title, description, category, commentCount in
+                    uploadVideo(title: title, description: description, category: category)
+                }
+            }
         }
         .onAppear {
             player = AVPlayer(url: videoURL)
         }
     }
     
-    private func uploadVideo() {
+    private func uploadVideo(title: String, description: String, category: String) {
         isUploading = true
         
         // Get video metadata including location
@@ -71,37 +77,41 @@ struct VideoPreviewView: View {
         // Upload video to Firebase Storage
         Task {
             do {
+                guard let userId = Auth.auth().currentUser?.uid else {
+                    print("Error: No authenticated user")
+                    isUploading = false
+                    return
+                }
+                
                 let videoData = try Data(contentsOf: videoURL)
                 let storageRef = Storage.storage().reference()
-                let videoRef = storageRef.child("videos/\(UUID().uuidString).mov")
+                let videoId = UUID().uuidString
+                let videoRef = storageRef.child("videos/\(videoId).mov")
+                
+                // Create metadata
+                let storageMetadata = StorageMetadata()
+                storageMetadata.contentType = "video/quicktime"
                 
                 // Upload video data
-                _ = try await videoRef.putDataAsync(videoData)
+                _ = try await videoRef.putDataAsync(videoData, metadata: storageMetadata)
                 
                 // Get download URL
                 let downloadURL = try await videoRef.downloadURL()
                 
                 // Create video document in Firestore
-                // Format the location string
                 let locationString = if let location = metadata.location {
                     "\(location.latitude),\(location.longitude)"
                 } else {
                     ""
                 }
                 
-                // Create a formatted title with current date
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateStyle = .medium
-                dateFormatter.timeStyle = .short
-                let formattedDate = dateFormatter.string(from: Date())
-                
                 let video = Video(
-                    userId: Auth.auth().currentUser?.uid ?? "",
-                    title: "Video - \(formattedDate)",
-                    description: "",
+                    userId: userId,
+                    title: title,
+                    description: description,
                     location: locationString,
                     tags: [],
-                    category: "uncategorized",
+                    category: category,
                     videoUrl: downloadURL.absoluteString,
                     createdAt: Date(),
                     views: 0,
@@ -151,4 +161,8 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 struct VideoMetadata {
     let location: CLLocationCoordinate2D?
     let timestamp: Date
+}
+
+#Preview {
+    VideoPreviewView(videoURL: URL(string: "https://example.com/video.mov")!)
 }

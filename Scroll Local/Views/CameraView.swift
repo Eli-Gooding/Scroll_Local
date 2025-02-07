@@ -8,6 +8,10 @@ public struct CameraView: View {
     @State private var showingVideoPreview = false
     @State private var showingMediaPicker = false
     
+    public init() {
+        // Empty init to satisfy public access
+    }
+    
     public var body: some View {
         ZStack {
             // Camera preview
@@ -34,6 +38,9 @@ public struct CameraView: View {
             } else {
                 // Show loading state while checking permissions/setting up camera
                 ProgressView("Setting up camera...")
+                    .onAppear {
+                        viewModel.checkPermissions()
+                    }
             }
             
             // Camera controls
@@ -110,14 +117,22 @@ public struct CameraPreviewView: UIViewRepresentable {
     let previewLayer: AVCaptureVideoPreviewLayer
     
     public func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
-        previewLayer.videoGravity = .resizeAspectFill
+        let view = UIView(frame: CGRect.zero)
+        view.backgroundColor = .black
+        
+        // Add preview layer to view's layer
+        previewLayer.frame = view.bounds
         view.layer.addSublayer(previewLayer)
+        
         return view
     }
     
     public func updateUIView(_ uiView: UIView, context: Context) {
+        // Update preview layer frame when view bounds change
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         previewLayer.frame = uiView.bounds
+        CATransaction.commit()
     }
 }
 
