@@ -32,8 +32,8 @@ public struct CameraView: View {
                     .padding(.top)
                 }
                 .padding()
-            } else if let previewLayer = viewModel.previewLayer {
-                CameraPreviewView(previewLayer: previewLayer)
+            } else if let session = viewModel.captureSession {
+                CameraPreviewView(session: session)
                     .ignoresSafeArea()
             } else {
                 // Show loading state while checking permissions/setting up camera
@@ -113,26 +113,43 @@ public struct CameraView: View {
 }
 
 // Camera preview helper view
-public struct CameraPreviewView: UIViewRepresentable {
-    let previewLayer: AVCaptureVideoPreviewLayer
+public class PreviewView: UIView {
+    public override class var layerClass: AnyClass {
+        return AVCaptureVideoPreviewLayer.self
+    }
     
-    public func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: CGRect.zero)
+    public var videoPreviewLayer: AVCaptureVideoPreviewLayer {
+        return layer as! AVCaptureVideoPreviewLayer
+    }
+    
+    public var session: AVCaptureSession? {
+        get { videoPreviewLayer.session }
+        set { videoPreviewLayer.session = newValue }
+    }
+}
+
+public struct CameraPreviewView: UIViewRepresentable {
+    let session: AVCaptureSession
+    
+    public init(session: AVCaptureSession) {
+        self.session = session
+    }
+    
+    public func makeUIView(context: Context) -> PreviewView {
+        let view = PreviewView()
         view.backgroundColor = .black
-        
-        // Add preview layer to view's layer
-        previewLayer.frame = view.bounds
-        view.layer.addSublayer(previewLayer)
-        
+        view.videoPreviewLayer.videoGravity = .resizeAspectFill
+        view.session = session
         return view
     }
     
-    public func updateUIView(_ uiView: UIView, context: Context) {
-        // Update preview layer frame when view bounds change
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        previewLayer.frame = uiView.bounds
-        CATransaction.commit()
+    public func updateUIView(_ uiView: PreviewView, context: Context) {
+        // Update rotation if needed
+        if #available(iOS 17.0, *) {
+            uiView.videoPreviewLayer.connection?.videoRotationAngle = 0
+        } else {
+            uiView.videoPreviewLayer.connection?.videoOrientation = .portrait
+        }
     }
 }
 

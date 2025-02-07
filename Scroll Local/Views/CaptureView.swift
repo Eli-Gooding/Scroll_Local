@@ -31,21 +31,21 @@ struct CaptureView: View {
                         .padding(.top)
                     }
                     .padding()
-                } else if let previewLayer = cameraViewModel.previewLayer {
+                } else if let session = cameraViewModel.captureSession {
                     ZStack {
                         // Camera preview
-                        CameraPreviewView(previewLayer: previewLayer)
-                            .frame(width: geometry.size.width, height: geometry.size.height - 100) // Subtract space for tab bar
-                            .onAppear {
-                                previewLayer.frame = CGRect(x: 0, y: 0, 
-                                                          width: geometry.size.width,
-                                                          height: geometry.size.height - 100)
-                            }
-                            .onChange(of: geometry.size) { _ in
-                                previewLayer.frame = CGRect(x: 0, y: 0,
-                                                          width: geometry.size.width,
-                                                          height: geometry.size.height - 100)
-                            }
+                        CameraPreviewView(session: session)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .edgesIgnoringSafeArea(.all)
+                        
+                        // Semi-transparent bar for top safe area
+                        VStack {
+                            Rectangle()
+                                .fill(Color.black.opacity(0.3))
+                                .frame(height: geometry.safeAreaInsets.top)
+                                .edgesIgnoringSafeArea(.top)
+                            Spacer()
+                        }
                         
                         // Recording controls
                         VStack {
@@ -90,7 +90,7 @@ struct CaptureView: View {
                                         .foregroundColor(.white)
                                 }
                             }
-                            .padding(.bottom, 20) // Reduced padding since we're already accounting for tab bar
+                            .padding(.bottom, 20)
                         }
                     }
                 } else {
@@ -102,13 +102,11 @@ struct CaptureView: View {
             }
         }
         .onAppear {
-            // Initialize camera immediately when view appears
             if !cameraViewModel.showPermissionDenied {
                 cameraViewModel.setupCamera()
             }
         }
         .onDisappear {
-            // Stop the session when leaving the view
             cameraViewModel.stopSession()
         }
         .sheet(isPresented: $showVideoPreview) {
