@@ -81,6 +81,11 @@ class ExploreViewModel: NSObject, ObservableObject {
         updateRegion(newRegion)
     }
     
+    func centerMapOnCoordinate(_ coordinate: CLLocationCoordinate2D) {
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        centerMapOnLocation(location)
+    }
+    
     func updateRegion(_ newRegion: MKCoordinateRegion) {
         region = newRegion
     }
