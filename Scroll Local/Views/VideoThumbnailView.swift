@@ -1,16 +1,14 @@
 import SwiftUI
-import FirebaseStorage
 
 struct VideoThumbnailView: View {
     let video: Video
-    @State private var thumbnailExists = false
-    @State private var thumbnailUrl: URL?
     
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .bottomLeading) {
                 // Thumbnail or placeholder
-                if let url = thumbnailUrl {
+                if let thumbnailUrl = video.thumbnailUrl,
+                   let url = URL(string: thumbnailUrl) {
                     AsyncImage(url: url) { image in
                         image
                             .resizable()
@@ -68,26 +66,5 @@ struct VideoThumbnailView: View {
             .clipped()
         }
         .aspectRatio(1, contentMode: .fit)
-        .task {
-            await checkAndLoadThumbnail()
-        }
-    }
-    
-    private func checkAndLoadThumbnail() async {
-        guard let videoId = video.id else { return }
-        
-        let storage = Storage.storage()
-        let thumbPath = "videos/thumb_\(videoId).png"
-        let thumbRef = storage.reference().child(thumbPath)
-        
-        do {
-            let url = try await thumbRef.downloadURL()
-            await MainActor.run {
-                self.thumbnailUrl = url
-            }
-        } catch {
-            print("No thumbnail found for video \(videoId): \(error)")
-            // Leave thumbnailUrl as nil to show placeholder
-        }
     }
 } 

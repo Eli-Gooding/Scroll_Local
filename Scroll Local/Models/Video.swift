@@ -12,26 +12,13 @@ public struct Video: Identifiable, Equatable {
     public let tags: [String]
     public let category: String
     public let videoUrl: String
+    public let thumbnailUrl: String?
     public let createdAt: Date
     public var views: Int
     public var helpfulCount: Int
     public var notHelpfulCount: Int
     public var saveCount: Int
     public var commentCount: Int
-    
-    // Computed property for thumbnail URL
-    public var thumbnailUrl: String? {
-        // Extract the video path from the full URL
-        guard let urlComponents = URLComponents(string: videoUrl),
-              let host = urlComponents.host,
-              let path = urlComponents.path.components(separatedBy: "/videos/").last else {
-            return nil
-        }
-        
-        // Remove the file extension and add thumb_ prefix with .png extension
-        let videoName = path.components(separatedBy: ".").first ?? path
-        return "https://\(host)/videos/thumb_\(videoName).png"
-    }
     
     public var firestoreData: [String: Any] {
         return [
@@ -43,6 +30,7 @@ public struct Video: Identifiable, Equatable {
             "tags": tags,
             "category": category,
             "video_url": videoUrl,
+            "thumbnail_url": thumbnailUrl as Any,
             "created_at": Timestamp(date: createdAt),
             "views": views,
             "helpful_count": helpfulCount,
@@ -55,7 +43,7 @@ public struct Video: Identifiable, Equatable {
     public init(userId: String, title: String, description: String, location: String,
          tags: [String], category: String, videoUrl: String, createdAt: Date,
          views: Int, helpfulCount: Int, notHelpfulCount: Int, saveCount: Int, commentCount: Int,
-         userDisplayName: String? = nil) {
+         userDisplayName: String? = nil, thumbnailUrl: String? = nil) {
         self.userId = userId
         self.userDisplayName = userDisplayName
         self.title = title
@@ -64,6 +52,7 @@ public struct Video: Identifiable, Equatable {
         self.tags = tags
         self.category = category
         self.videoUrl = videoUrl
+        self.thumbnailUrl = thumbnailUrl
         self.createdAt = createdAt
         self.views = views
         self.helpfulCount = helpfulCount
@@ -98,6 +87,7 @@ public struct Video: Identifiable, Equatable {
         self.tags = tags
         self.category = category
         self.videoUrl = videoUrl
+        self.thumbnailUrl = data["thumbnail_url"] as? String
         self.createdAt = createdAt
         self.views = views
         self.helpfulCount = helpfulCount

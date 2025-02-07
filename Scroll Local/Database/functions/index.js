@@ -70,23 +70,47 @@ exports.generateThumbnail = functions
     });
     console.log('Thumbnail uploaded to:', thumbFilePath);
 
-    // Update the video document in Firestore with the thumbnail URL
-    const videoId = path.parse(fileName).name;
-    const thumbnailUrl = `https://storage.googleapis.com/${bucket.name}/${thumbFilePath}`;
+    // Get the video URL that's stored in Firestore
+    const videoUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
+    const thumbnailUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(thumbFilePath)}?alt=media`;
+    
+    console.log('Looking for video with URL:', videoUrl);
+    console.log('Generated thumbnail URL:', thumbnailUrl);
     
     try {
-      // Find the video document by matching the video URL
-      const videoRef = admin.firestore().collection('videos')
-        .where('video_url', '==', `https://storage.googleapis.com/${bucket.name}/${filePath}`)
-        .limit(1);
+      // Find the video document by matching the video URL (ignoring token and port)
+      const videosRef = admin.firestore().collection('videos');
+      const allVideos = await videosRef.get();
       
-      const videoSnapshot = await videoRef.get();
-      if (!videoSnapshot.empty) {
-        const videoDoc = videoSnapshot.docs[0];
+      // Find the video document by matching the URL pattern
+      const videoDoc = allVideos.docs.find(doc => {
+        const storedUrl = doc.data().video_url || '';
+        // Remove the token and port from the stored URL for comparison
+        const normalizedStoredUrl = storedUrl
+          .replace(':443', '')
+          .replace(/&token=[^&]+$/, '');
+        
+        console.log('Comparing URLs:');
+        console.log('Normalized stored URL:', normalizedStoredUrl);
+        console.log('Search URL:', videoUrl);
+        
+        return normalizedStoredUrl === videoUrl;
+      });
+      
+      if (videoDoc) {
+        console.log('Found video document:', videoDoc.id);
+        console.log('Current video data:', videoDoc.data());
+        
         await videoDoc.ref.update({
-          thumbnailUrl: thumbnailUrl
+          thumbnail_url: thumbnailUrl
         });
-        console.log('Updated video document with thumbnail URL');
+        console.log('Updated video document with thumbnail URL:', videoDoc.id);
+      } else {
+        console.log('No matching video document found for URL:', videoUrl);
+        console.log('Total videos in collection:', allVideos.size);
+        allVideos.forEach(doc => {
+          console.log('Video URL in DB:', doc.data().video_url);
+        });
       }
     } catch (error) {
       console.error('Error updating video document:', error);
