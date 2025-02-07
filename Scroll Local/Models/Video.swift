@@ -19,6 +19,20 @@ public struct Video: Identifiable, Equatable {
     public var saveCount: Int
     public var commentCount: Int
     
+    // Computed property for thumbnail URL
+    public var thumbnailUrl: String? {
+        // Extract the video path from the full URL
+        guard let urlComponents = URLComponents(string: videoUrl),
+              let host = urlComponents.host,
+              let path = urlComponents.path.components(separatedBy: "/videos/").last else {
+            return nil
+        }
+        
+        // Remove the file extension and add thumb_ prefix with .png extension
+        let videoName = path.components(separatedBy: ".").first ?? path
+        return "https://\(host)/videos/thumb_\(videoName).png"
+    }
+    
     public var firestoreData: [String: Any] {
         return [
             "user_id": userId,

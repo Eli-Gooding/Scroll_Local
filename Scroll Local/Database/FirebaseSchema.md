@@ -218,6 +218,19 @@ service firebase.storage {
      - `createdAt` (DESCENDING)
    - Query scope: Collection
 
+3. User Posts Index:
+   - Fields:
+     - `user_id` (ASCENDING)
+     - `created_at` (DESCENDING)
+   - Query scope: Collection
+
+### VideoSaves Collection
+1. User Saves Index:
+   - Fields:
+     - `userId` (ASCENDING)
+     - `createdAt` (DESCENDING)
+   - Query scope: Collection
+
 ### Comments Collection
 1. Video Comments Index:
    - Fields:

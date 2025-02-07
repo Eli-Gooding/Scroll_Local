@@ -4,8 +4,10 @@ struct ProfileView: View {
     @State private var selectedTab = 0
     @StateObject private var firebaseService = FirebaseService.shared
     @ObservedObject private var userService = UserService.shared
+    @StateObject private var viewModel = ProfileViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var showingEditProfile = false
+    @State private var selectedVideo: Video?
     
     var body: some View {
         NavigationStack {
@@ -35,7 +37,7 @@ struct ProfileView: View {
                         
                         // Stats
                         HStack(spacing: 28) {
-                            StatView(value: "24", title: "Posts")
+                            StatView(value: "\(viewModel.userPosts.count)", title: "Posts")
                             StatView(value: "128", title: "Followers")
                             StatView(value: "164", title: "Following")
                         }
@@ -81,6 +83,9 @@ struct ProfileView: View {
                                 title: "Posts"
                             ) {
                                 selectedTab = 0
+                                Task {
+                                    await viewModel.fetchUserPosts()
+                                }
                             }
                             
                             TabButton(
@@ -89,20 +94,34 @@ struct ProfileView: View {
                                 title: "Saved"
                             ) {
                                 selectedTab = 1
+                                Task {
+                                    await viewModel.fetchSavedVideos()
+                                }
                             }
                         }
                         .padding(.vertical, 8)
                         
-                        // Content Grid
-                        LazyVGrid(columns: [
-                            GridItem(.flexible()),
-                            GridItem(.flexible()),
-                            GridItem(.flexible())
-                        ], spacing: 2) {
-                            ForEach(0..<15) { index in
-                                Rectangle()
-                                    .aspectRatio(1, contentMode: .fill)
-                                    .foregroundColor(Color(.systemGray5))
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .padding()
+                        } else if let error = viewModel.error {
+                            Text(error.localizedDescription)
+                                .foregroundColor(.red)
+                                .padding()
+                        } else {
+                            // Content Grid
+                            LazyVGrid(columns: [
+                                GridItem(.flexible()),
+                                GridItem(.flexible()),
+                                GridItem(.flexible())
+                            ], spacing: 2) {
+                                let videos = selectedTab == 0 ? viewModel.userPosts : viewModel.savedVideos
+                                ForEach(videos) { video in
+                                    VideoThumbnailView(video: video)
+                                        .onTapGesture {
+                                            selectedVideo = video
+                                        }
+                                }
                             }
                         }
                     }
@@ -150,6 +169,12 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileView()
+            }
+            .fullScreenCover(item: $selectedVideo) { video in
+                VideoDetailView(video: video)
+            }
+            .task {
+                await viewModel.fetchUserPosts()
             }
         }
     }
