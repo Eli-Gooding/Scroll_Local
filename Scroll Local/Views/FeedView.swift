@@ -29,7 +29,7 @@ struct FeedView: View {
                             .padding(.horizontal, 8)
                     )
                     
-                    if viewModel.isLoading {
+                    if viewModel.isLoading && viewModel.videos.isEmpty {
                         Spacer()
                         ProgressView("Loading videos...")
                         Spacer()
@@ -51,7 +51,7 @@ struct FeedView: View {
                         Spacer()
                     } else if viewModel.videos.isEmpty {
                         Spacer()
-                        Text("No videos found")
+                        Text(selectedFeed == 0 ? "Follow some users to see their content" : "No videos found in your area")
                             .font(.headline)
                         Spacer()
                     } else {
@@ -69,8 +69,24 @@ struct FeedView: View {
                         .scrollTargetBehavior(.paging)
                         .scrollClipDisabled(false)
                         .frame(height: mainGeometry.size.height - tabBarHeight - pickerHeight - bottomPadding)
+                        .scrollPosition(id: .init(get: { currentIndex }, set: { newValue in
+                            if let newIndex = newValue {
+                                currentIndex = newIndex
+                                // Load more videos when reaching second-to-last video
+                                if newIndex >= viewModel.videos.count - 2 {
+                                    Task {
+                                        await viewModel.fetchMoreVideos()
+                                    }
+                                }
+                            }
+                        }))
                     }
                 }
+            }
+        }
+        .onChange(of: selectedFeed) { newValue in
+            Task {
+                await viewModel.updateFeedType(newValue == 0 ? .following : .localArea)
             }
         }
         .task {
