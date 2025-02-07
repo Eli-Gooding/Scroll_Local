@@ -36,7 +36,16 @@ struct CaptureView: View {
                         // Camera preview
                         CameraPreviewView(session: session)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .ignoresSafeArea()
+                            .edgesIgnoringSafeArea(.all)
+                        
+                        // Semi-transparent bar for top safe area
+                        VStack {
+                            Rectangle()
+                                .fill(Color.black.opacity(0.3))
+                                .frame(height: geometry.safeAreaInsets.top)
+                                .edgesIgnoringSafeArea(.top)
+                            Spacer()
+                        }
                         
                         // Recording controls
                         VStack {

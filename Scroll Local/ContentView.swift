@@ -42,6 +42,8 @@ struct MainTabView: View {
                     .tabItem {
                         Label("Capture", systemImage: "plus.circle.fill")
                     }
+                    .toolbarBackground(.black.opacity(0.01), for: .tabBar)
+                    .toolbarColorScheme(.light, for: .tabBar)
                 
                 ExploreView()
                     .tabItem {
@@ -55,6 +57,10 @@ struct MainTabView: View {
             }
             .navigationTitle("Scroll Local")
             .navigationBarTitleDisplayMode(.inline)
+            .tint(.accentColor)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.visible, for: .tabBar)
+            .toolbar(.visible, for: .tabBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     NavigationLink {
@@ -76,11 +82,6 @@ struct MainTabView: View {
                     }
                 }
             }
-        }
-        .onAppear {
-            #if DEBUG
-            firebaseService.debugPrintAuthState()
-            #endif
         }
     }
 }
