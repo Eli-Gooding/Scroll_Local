@@ -177,7 +177,7 @@ struct VideoCard: View {
                             .foregroundStyle(.white)
                         
                         HStack {
-                            NavigationLink(video.userId) {
+                            NavigationLink(video.userDisplayName ?? video.userId) {
                                 OtherUserProfileView(username: video.userId)
                             }
                             .font(.custom("AvenirNext-Medium", size: 16))
