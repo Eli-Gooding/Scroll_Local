@@ -168,22 +168,25 @@ service cloud.firestore {
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      // DEVELOPMENT ONLY: Allow read/write access to all users
-      // TODO: Update these rules before production deployment
-      allow read, write: if request.auth != null || true;
-    }
-                   request.auth.uid == userId &&
+    // Videos path
+    match /videos/{videoId} {
+      allow read: if true;
+      allow write: if request.auth != null &&
                    request.resource.size < 100 * 1024 * 1024 && // 100MB max
                    request.resource.contentType.matches('video/.*');
     }
     
-    match /thumbnails/{userId}/{videoId}/{fileName} {
+    // Thumbnails are stored alongside videos with thumb_ prefix
+    match /videos/thumb_{videoId} {
       allow read: if true;
-      allow write: if request.auth != null && 
-                   request.auth.uid == userId &&
+      allow write: if request.auth != null &&
                    request.resource.size < 5 * 1024 * 1024 && // 5MB max
                    request.resource.contentType.matches('image/.*');
+    }
+    
+    // Default rule - deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
