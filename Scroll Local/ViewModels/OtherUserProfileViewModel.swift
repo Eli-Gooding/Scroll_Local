@@ -10,6 +10,7 @@ class OtherUserProfileViewModel: ObservableObject {
     @Published private(set) var followerCount = 0
     @Published private(set) var followingCount = 0
     @Published var error: Error?
+    @Published private(set) var isProcessing = false
     
     private let db = Firestore.firestore()
     private var userId: String?
@@ -50,39 +51,77 @@ class OtherUserProfileViewModel: ObservableObject {
         }
     }
     
-    func followUser() async throws {
+    func followUser() async {
         guard let userId = userId,
-              let currentUserId = Auth.auth().currentUser?.uid else { return }
+              let currentUserId = Auth.auth().currentUser?.uid,
+              !isProcessing else { return }
         
-        // Add to current user's following
-        try await db.collection("users").document(currentUserId).updateData([
-            "following": FieldValue.arrayUnion([userId])
-        ])
+        isProcessing = true
         
-        // Add to target user's followers
-        try await db.collection("users").document(userId).updateData([
-            "followers": FieldValue.arrayUnion([currentUserId])
-        ])
+        do {
+            let batch = db.batch()
+            
+            // Add to current user's following
+            let currentUserRef = db.collection("users").document(currentUserId)
+            batch.updateData([
+                "following": FieldValue.arrayUnion([userId])
+            ], forDocument: currentUserRef)
+            
+            // Add to target user's followers
+            let targetUserRef = db.collection("users").document(userId)
+            batch.updateData([
+                "followers": FieldValue.arrayUnion([currentUserId])
+            ], forDocument: targetUserRef)
+            
+            // Commit the batch
+            try await batch.commit()
+            
+            // Refresh the profile to get updated counts
+            if let userId = self.userId {
+                await loadUserProfile(userId: userId)
+            }
+        } catch {
+            self.error = error
+            print("Error following user: \(error)")
+        }
         
-        isFollowing = true
-        followerCount += 1
+        isProcessing = false
     }
     
-    func unfollowUser() async throws {
+    func unfollowUser() async {
         guard let userId = userId,
-              let currentUserId = Auth.auth().currentUser?.uid else { return }
+              let currentUserId = Auth.auth().currentUser?.uid,
+              !isProcessing else { return }
         
-        // Remove from current user's following
-        try await db.collection("users").document(currentUserId).updateData([
-            "following": FieldValue.arrayRemove([userId])
-        ])
+        isProcessing = true
         
-        // Remove from target user's followers
-        try await db.collection("users").document(userId).updateData([
-            "followers": FieldValue.arrayRemove([currentUserId])
-        ])
+        do {
+            let batch = db.batch()
+            
+            // Remove from current user's following
+            let currentUserRef = db.collection("users").document(currentUserId)
+            batch.updateData([
+                "following": FieldValue.arrayRemove([userId])
+            ], forDocument: currentUserRef)
+            
+            // Remove from target user's followers
+            let targetUserRef = db.collection("users").document(userId)
+            batch.updateData([
+                "followers": FieldValue.arrayRemove([currentUserId])
+            ], forDocument: targetUserRef)
+            
+            // Commit the batch
+            try await batch.commit()
+            
+            // Refresh the profile to get updated counts
+            if let userId = self.userId {
+                await loadUserProfile(userId: userId)
+            }
+        } catch {
+            self.error = error
+            print("Error unfollowing user: \(error)")
+        }
         
-        isFollowing = false
-        followerCount -= 1
+        isProcessing = false
     }
 } 

@@ -48,8 +48,15 @@ struct OtherUserProfileView: View {
                 
                 // Bio Section
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(viewModel.user?.displayName ?? "No Name")
-                        .font(.headline)
+                    if let displayName = viewModel.user?.displayName {
+                        Text(displayName)
+                            .font(.headline)
+                    }
+                    if let email = viewModel.user?.email {
+                        Text(email)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
                     if let bio = viewModel.user?.bio {
                         Text(bio)
                             .font(.subheadline)
@@ -63,20 +70,29 @@ struct OtherUserProfileView: View {
                 Button(action: {
                     Task {
                         if viewModel.isFollowing {
-                            try? await viewModel.unfollowUser()
+                            await viewModel.unfollowUser()
                         } else {
-                            try? await viewModel.followUser()
+                            await viewModel.followUser()
                         }
                     }
                 }) {
-                    Text(viewModel.isFollowing ? "Unfollow" : "Follow")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(viewModel.isFollowing ? Color(.systemGray6) : Color.accentColor)
-                        .foregroundColor(viewModel.isFollowing ? .primary : .white)
-                        .cornerRadius(8)
+                    if viewModel.isProcessing {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                    } else {
+                        Text(viewModel.isFollowing ? "Unfollow" : "Follow")
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(viewModel.isFollowing ? Color(.systemGray6) : Color.accentColor)
+                            .foregroundColor(viewModel.isFollowing ? .primary : .white)
+                            .cornerRadius(8)
+                    }
                 }
+                .disabled(viewModel.isProcessing)
                 .padding(.horizontal)
                 
                 // Content Grid
