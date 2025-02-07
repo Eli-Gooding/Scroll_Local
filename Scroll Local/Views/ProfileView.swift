@@ -8,6 +8,8 @@ struct ProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingEditProfile = false
     @State private var selectedVideo: Video?
+    @State private var showingFollowers = false
+    @State private var showingFollowing = false
     
     var body: some View {
         NavigationStack {
@@ -38,8 +40,12 @@ struct ProfileView: View {
                         // Stats
                         HStack(spacing: 28) {
                             StatView(value: "\(viewModel.userPosts.count)", title: "Posts")
-                            StatView(value: "\(viewModel.followerCount)", title: "Followers")
-                            StatView(value: "\(viewModel.followingCount)", title: "Following")
+                            Button(action: { showingFollowers = true }) {
+                                StatView(value: "\(viewModel.followerCount)", title: "Followers")
+                            }
+                            Button(action: { showingFollowing = true }) {
+                                StatView(value: "\(viewModel.followingCount)", title: "Following")
+                            }
                         }
                     }
                     .padding(.horizontal)
@@ -169,6 +175,12 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileView()
+            }
+            .sheet(isPresented: $showingFollowers) {
+                FollowListView(userId: userService.currentUser?.id ?? "", listType: .followers)
+            }
+            .sheet(isPresented: $showingFollowing) {
+                FollowListView(userId: userService.currentUser?.id ?? "", listType: .following)
             }
             .fullScreenCover(item: $selectedVideo) { video in
                 VideoDetailView(video: video)
