@@ -5,6 +5,7 @@ import FirebaseFirestore
 public struct Video: Identifiable, Equatable {
     public var id: String?
     public let userId: String
+    public var userDisplayName: String?
     public let title: String
     public let description: String
     public let location: String
@@ -21,6 +22,7 @@ public struct Video: Identifiable, Equatable {
     public var firestoreData: [String: Any] {
         return [
             "user_id": userId,
+            "user_display_name": userDisplayName as Any,
             "title": title,
             "description": description,
             "location": location,
@@ -38,8 +40,10 @@ public struct Video: Identifiable, Equatable {
     
     public init(userId: String, title: String, description: String, location: String,
          tags: [String], category: String, videoUrl: String, createdAt: Date,
-         views: Int, helpfulCount: Int, notHelpfulCount: Int, saveCount: Int, commentCount: Int) {
+         views: Int, helpfulCount: Int, notHelpfulCount: Int, saveCount: Int, commentCount: Int,
+         userDisplayName: String? = nil) {
         self.userId = userId
+        self.userDisplayName = userDisplayName
         self.title = title
         self.description = description
         self.location = location
@@ -73,6 +77,7 @@ public struct Video: Identifiable, Equatable {
         }
         
         self.userId = userId
+        self.userDisplayName = data["user_display_name"] as? String
         self.title = title
         self.description = description
         self.location = location

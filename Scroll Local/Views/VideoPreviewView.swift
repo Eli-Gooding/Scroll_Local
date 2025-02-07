@@ -74,6 +74,9 @@ struct VideoPreviewView: View {
             timestamp: Date()
         )
         
+        // Parse hashtags from description
+        let tags = parseHashtags(from: description)
+        
         // Upload video to Firebase Storage
         Task {
             do {
@@ -105,12 +108,22 @@ struct VideoPreviewView: View {
                     ""
                 }
                 
+                // Try to get the current user's display name, but don't fail if we can't
+                var userDisplayName: String? = nil
+                do {
+                    let currentUser = try await UserService.shared.fetchUser(withId: userId)
+                    userDisplayName = currentUser.displayName
+                } catch {
+                    print("Warning: Could not fetch user display name: \(error)")
+                    // Continue without the display name
+                }
+                
                 let video = Video(
                     userId: userId,
                     title: title,
                     description: description,
                     location: locationString,
-                    tags: [],
+                    tags: tags,  // Use the parsed tags
                     category: category,
                     videoUrl: downloadURL.absoluteString,
                     createdAt: Date(),
@@ -118,7 +131,8 @@ struct VideoPreviewView: View {
                     helpfulCount: 0,
                     notHelpfulCount: 0,
                     saveCount: 0,
-                    commentCount: 0
+                    commentCount: 0,
+                    userDisplayName: userDisplayName
                 )
                 
                 try await Firestore.firestore()
@@ -136,6 +150,16 @@ struct VideoPreviewView: View {
                 isUploading = false
             }
         }
+    }
+    
+    // Parse hashtags from text
+    private func parseHashtags(from text: String) -> [String] {
+        // Split text into words and filter for hashtags
+        let words = text.split(separator: " ")
+        return words
+            .filter { $0.hasPrefix("#") }
+            .map { String($0.dropFirst()) }  // Remove the # symbol
+            .filter { !$0.isEmpty }  // Remove any empty tags
     }
 }
 

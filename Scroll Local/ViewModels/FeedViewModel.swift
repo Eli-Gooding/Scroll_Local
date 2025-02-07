@@ -76,6 +76,25 @@ class FeedViewModel: ObservableObject {
         }
     }
     
+    // Load user display names for videos
+    private func loadUserDisplayNames() async {
+        let userIds = Set(videos.map { $0.userId })
+        
+        for userId in userIds {
+            do {
+                let userDoc = try await db.collection("users").document(userId).getDocument()
+                if let displayName = userDoc.data()?["displayName"] as? String {
+                    // Update all videos by this user with their display name
+                    for (index, video) in videos.enumerated() where video.userId == userId {
+                        videos[index].userDisplayName = displayName
+                    }
+                }
+            } catch {
+                print("Error fetching user display name: \(error)")
+            }
+        }
+    }
+    
     // Load user interactions for all videos
     private func loadUserInteractions() async {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
@@ -145,6 +164,9 @@ class FeedViewModel: ObservableObject {
             
             // Add listeners for the new videos
             addVideoListeners()
+            
+            // Load user display names
+            await loadUserDisplayNames()
             
             // Refresh video data and fetch user interactions
             await refreshVideoData()
@@ -304,13 +326,17 @@ class FeedViewModel: ObservableObject {
                 Video(id: document.documentID, data: document.data())
             }
             
+            // Add the new videos to our array
+            videos.append(contentsOf: fetchedVideos)
+            
+            // Load user display names for the new videos
+            await loadUserDisplayNames()
+            
             // Refresh video data and fetch user interactions for new videos
             await refreshVideoData()
             if let currentUserId = Auth.auth().currentUser?.uid {
                 await fetchUserInteractions(for: fetchedVideos.compactMap { $0.id }, userId: currentUserId)
             }
-            
-            videos.append(contentsOf: fetchedVideos)
         } catch {
             self.error = error
             print("Error fetching more videos: \(error)")
