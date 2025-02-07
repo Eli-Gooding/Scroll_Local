@@ -138,26 +138,6 @@ struct ProfileView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button(action: {
-                            // Handle account settings
-                        }) {
-                            Label("Account Settings", systemImage: "person.circle")
-                        }
-                        
-                        Button(action: {
-                            // Handle privacy settings
-                        }) {
-                            Label("Privacy", systemImage: "lock")
-                        }
-                        
-                        Button(action: {
-                            // Handle notifications settings
-                        }) {
-                            Label("Notifications", systemImage: "bell")
-                        }
-                        
-                        Divider()
-                        
                         Button(role: .destructive, action: {
                             do {
                                 try firebaseService.signOut()
