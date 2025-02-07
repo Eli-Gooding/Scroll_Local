@@ -14,12 +14,28 @@ class FeedViewModel: ObservableObject {
     
     private let db = Firestore.firestore()
     private var lastDocument: DocumentSnapshot?
-    private let limit = 5 // Number of videos to fetch at a time
+    private let batchSize = 5 // Number of videos to fetch at a time
+    private let maxVideos = 10 // Maximum number of videos to keep in memory
+    private var currentFeedType: FeedType = .localArea
+    
+    enum FeedType {
+        case following
+        case localArea
+    }
     
     init() {
         Task {
             await loadUserInteractions()
         }
+    }
+    
+    // Update feed type and refresh videos
+    func updateFeedType(_ type: FeedType) async {
+        print("Updating feed type to: \(type)")
+        currentFeedType = type
+        videos.removeAll()
+        lastDocument = nil
+        await fetchVideos()
     }
     
     // Refresh video data to get latest counts
@@ -130,37 +146,90 @@ class FeedViewModel: ObservableObject {
     
     // Fetch initial videos
     func fetchVideos() async {
-        print("Starting to fetch videos...")
+        print("Starting to fetch videos... Feed type: \(currentFeedType)")
         isLoading = true
         error = nil
         
         guard let currentUserId = Auth.auth().currentUser?.uid else {
+            print("No authenticated user found")
             isLoading = false
             return
         }
         
-        // Remove existing listeners before fetching new videos
-        videos.removeAll()
-        
         do {
-            let query = db.collection("videos")
-                .order(by: "created_at", descending: true)
-                .limit(to: limit)
-            
-            print("Executing Firestore query...")
-            let snapshot = try await query.getDocuments()
-            print("Got \(snapshot.documents.count) documents from Firestore")
-            
-            lastDocument = snapshot.documents.last
-            
-            videos = snapshot.documents.compactMap { document in
-                print("Processing document: \(document.documentID)")
-                let video = Video(id: document.documentID, data: document.data())
-                if video == nil {
-                    print("Failed to parse document: \(document.data())")
+            if currentFeedType == .following {
+                // Get the list of users being followed
+                let userDoc = try await db.collection("users").document(currentUserId).getDocument()
+                let following = (userDoc.data()?["following"] as? [String]) ?? []
+                print("Found \(following.count) followed users")
+                
+                if following.isEmpty {
+                    print("No followed users found, clearing videos")
+                    videos = []
+                    isLoading = false
+                    return
                 }
-                return video
+                
+                // Split following into chunks of 10 (Firestore limit for 'in' operator)
+                let followingChunks = stride(from: 0, to: following.count, by: 10).map {
+                    Array(following[$0..<min($0 + 10, following.count)])
+                }
+                
+                var allVideos: [QueryDocumentSnapshot] = []
+                
+                // Fetch videos for each chunk of followed users
+                for chunk in followingChunks {
+                    let query = db.collection("videos")
+                        .whereField("user_id", in: chunk)
+                        .order(by: "created_at", descending: true)
+                        .limit(to: batchSize)
+                    
+                    let snapshot = try await query.getDocuments()
+                    allVideos.append(contentsOf: snapshot.documents)
+                }
+                
+                // Sort all videos by creation date
+                allVideos.sort { doc1, doc2 in
+                    let date1 = (doc1.data()["created_at"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                    let date2 = (doc2.data()["created_at"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                    return date1 > date2
+                }
+                
+                // Take only the first batchSize videos
+                let batchVideos = Array(allVideos.prefix(batchSize))
+                lastDocument = batchVideos.last
+                
+                videos = batchVideos.compactMap { document in
+                    print("Processing document: \(document.documentID)")
+                    let video = Video(id: document.documentID, data: document.data())
+                    if video == nil {
+                        print("Failed to parse document: \(document.data())")
+                    }
+                    return video
+                }
+            } else {
+                // Local area feed - original implementation
+                let query = db.collection("videos")
+                    .order(by: "created_at", descending: true)
+                    .limit(to: batchSize)
+                
+                print("Executing Firestore query...")
+                let snapshot = try await query.getDocuments()
+                print("Got \(snapshot.documents.count) documents from Firestore")
+                
+                lastDocument = snapshot.documents.last
+                
+                videos = snapshot.documents.compactMap { document in
+                    print("Processing document: \(document.documentID)")
+                    let video = Video(id: document.documentID, data: document.data())
+                    if video == nil {
+                        print("Failed to parse document: \(document.data())")
+                    }
+                    return video
+                }
             }
+            
+            print("Successfully parsed \(videos.count) videos")
             
             // Add listeners for the new videos
             addVideoListeners()
@@ -172,7 +241,6 @@ class FeedViewModel: ObservableObject {
             await refreshVideoData()
             await fetchUserInteractions(for: videos.compactMap { $0.id }, userId: currentUserId)
             
-            print("Successfully parsed \(videos.count) videos")
         } catch {
             self.error = error
             print("Error fetching videos: \(error)")
@@ -308,35 +376,115 @@ class FeedViewModel: ObservableObject {
     
     // Fetch more videos (pagination)
     func fetchMoreVideos() async {
-        guard !isLoading, let lastDocument = lastDocument else { return }
+        print("Attempting to fetch more videos... Current count: \(videos.count)")
+        guard !isLoading, let lastDocument = lastDocument else {
+            print("Cannot fetch more videos: isLoading=\(isLoading), lastDocument=\(lastDocument != nil)")
+            return
+        }
         
         isLoading = true
         error = nil
         
         do {
-            let query = db.collection("videos")
-                .order(by: "created_at", descending: true)
-                .start(afterDocument: lastDocument)
-                .limit(to: limit)
-            
-            let snapshot = try await query.getDocuments()
-            self.lastDocument = snapshot.documents.last
-            
-            let fetchedVideos = snapshot.documents.compactMap { document in
-                Video(id: document.documentID, data: document.data())
+            guard let currentUserId = Auth.auth().currentUser?.uid else {
+                print("No authenticated user found")
+                isLoading = false
+                return
             }
             
-            // Add the new videos to our array
-            videos.append(contentsOf: fetchedVideos)
+            if currentFeedType == .following {
+                // Get the list of users being followed
+                let userDoc = try await db.collection("users").document(currentUserId).getDocument()
+                let following = (userDoc.data()?["following"] as? [String]) ?? []
+                print("Found \(following.count) followed users for pagination")
+                
+                if following.isEmpty {
+                    print("No followed users found, skipping pagination")
+                    isLoading = false
+                    return
+                }
+                
+                // Split following into chunks of 10 (Firestore limit for 'in' operator)
+                let followingChunks = stride(from: 0, to: following.count, by: 10).map {
+                    Array(following[$0..<min($0 + 10, following.count)])
+                }
+                
+                var allVideos: [QueryDocumentSnapshot] = []
+                
+                // Fetch videos for each chunk of followed users
+                for chunk in followingChunks {
+                    let query = db.collection("videos")
+                        .whereField("user_id", in: chunk)
+                        .order(by: "created_at", descending: true)
+                        .start(afterDocument: lastDocument)
+                        .limit(to: batchSize)
+                    
+                    let snapshot = try await query.getDocuments()
+                    allVideos.append(contentsOf: snapshot.documents)
+                }
+                
+                // Sort all videos by creation date
+                allVideos.sort { doc1, doc2 in
+                    let date1 = (doc1.data()["created_at"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                    let date2 = (doc2.data()["created_at"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                    return date1 > date2
+                }
+                
+                // Take only the first batchSize videos
+                let batchVideos = Array(allVideos.prefix(batchSize))
+                self.lastDocument = batchVideos.last
+                
+                let fetchedVideos = batchVideos.compactMap { document in
+                    Video(id: document.documentID, data: document.data())
+                }
+                
+                // Remove older videos if we'll exceed maxVideos
+                if videos.count + fetchedVideos.count > maxVideos {
+                    let numberOfVideosToRemove = (videos.count + fetchedVideos.count) - maxVideos
+                    print("Removing \(numberOfVideosToRemove) older videos to maintain max limit")
+                    videos.removeFirst(numberOfVideosToRemove)
+                }
+                
+                // Add the new videos to our array
+                videos.append(contentsOf: fetchedVideos)
+                
+            } else {
+                // Local area feed - original implementation
+                let query = db.collection("videos")
+                    .order(by: "created_at", descending: true)
+                    .start(afterDocument: lastDocument)
+                    .limit(to: batchSize)
+                
+                print("Executing pagination query...")
+                let snapshot = try await query.getDocuments()
+                print("Got \(snapshot.documents.count) additional documents")
+                
+                self.lastDocument = snapshot.documents.last
+                
+                let fetchedVideos = snapshot.documents.compactMap { document in
+                    Video(id: document.documentID, data: document.data())
+                }
+                
+                // Remove older videos if we'll exceed maxVideos
+                if videos.count + fetchedVideos.count > maxVideos {
+                    let numberOfVideosToRemove = (videos.count + fetchedVideos.count) - maxVideos
+                    print("Removing \(numberOfVideosToRemove) older videos to maintain max limit")
+                    videos.removeFirst(numberOfVideosToRemove)
+                }
+                
+                // Add the new videos to our array
+                videos.append(contentsOf: fetchedVideos)
+            }
+            
+            print("New total video count: \(videos.count)")
             
             // Load user display names for the new videos
             await loadUserDisplayNames()
             
             // Refresh video data and fetch user interactions for new videos
             await refreshVideoData()
-            if let currentUserId = Auth.auth().currentUser?.uid {
-                await fetchUserInteractions(for: fetchedVideos.compactMap { $0.id }, userId: currentUserId)
-            }
+            await fetchUserInteractions(for: videos.compactMap { $0.id }, userId: currentUserId)
+            
         } catch {
             self.error = error
             print("Error fetching more videos: \(error)")

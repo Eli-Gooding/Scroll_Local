@@ -1,7 +1,23 @@
 {
   "firestore": {
     "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
+    "indexes": "firestore.indexes.json",
+    "indexes": [
+      {
+        "collectionGroup": "videos",
+        "queryScope": "COLLECTION",
+        "fields": [
+          {
+            "fieldPath": "user_id",
+            "arrayConfig": "CONTAINS"
+          },
+          {
+            "fieldPath": "created_at",
+            "order": "DESCENDING"
+          }
+        ]
+      }
+    ]
   },
   "storage": {
     "rules": "storage.rules"
