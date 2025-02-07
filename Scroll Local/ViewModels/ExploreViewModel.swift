@@ -4,27 +4,95 @@ import CoreLocation
 import FirebaseFirestore
 
 class ExploreViewModel: NSObject, ObservableObject {
-    @Published var region = MKCoordinateRegion()
-    @Published var userLocation: CLLocation?
-    @Published var videoAnnotations: [VideoAnnotation] = []
+    @Published private(set) var region: MKCoordinateRegion
+    @Published private(set) var userLocation: CLLocation?
+    @Published private(set) var videoAnnotations: [VideoAnnotation] = []
+    @Published private(set) var locationAuthorizationStatus: CLAuthorizationStatus = .notDetermined
+    @Published private(set) var locationError: String?
+    
     private let locationManager = CLLocationManager()
     private let db = Firestore.firestore()
+    private let defaultSpan = MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
+    private var hasInitializedLocation = false
     
     override init() {
-        super.init()
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.requestWhenInUseAuthorization()
-        
-        // Set default region (will be updated when user location is available)
-        region = MKCoordinateRegion(
+        // Initialize with a default region
+        self.region = MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
             span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
         )
+        
+        super.init()
+        
+        setupLocationManager()
+    }
+    
+    private func setupLocationManager() {
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        
+        // Check current authorization status
+        locationAuthorizationStatus = locationManager.authorizationStatus
+        
+        switch locationAuthorizationStatus {
+        case .notDetermined:
+            locationManager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways:
+            startLocationUpdates()
+        case .denied, .restricted:
+            locationError = "Please enable location services in Settings to see nearby videos."
+        @unknown default:
+            break
+        }
     }
     
     func startLocationUpdates() {
         locationManager.startUpdatingLocation()
+        
+        // If we already have a cached location, use it for initial setup
+        if !hasInitializedLocation, let location = locationManager.location {
+            handleLocationUpdate(location, shouldCenterMap: true)
+        }
+    }
+    
+    private func handleLocationUpdate(_ location: CLLocation, shouldCenterMap: Bool = false) {
+        userLocation = location
+        locationError = nil
+        
+        if shouldCenterMap {
+            centerMapOnLocation(location)
+        }
+        
+        if !hasInitializedLocation {
+            hasInitializedLocation = true
+            fetchNearbyVideos()
+        }
+    }
+    
+    private func centerMapOnLocation(_ location: CLLocation) {
+        // Update map region to center on the given location with a 25-mile radius
+        let distanceInMeters = 40233.6 // 25 miles in meters
+        let newRegion = MKCoordinateRegion(
+            center: location.coordinate,
+            latitudinalMeters: distanceInMeters,
+            longitudinalMeters: distanceInMeters
+        )
+        
+        updateRegion(newRegion)
+    }
+    
+    func updateRegion(_ newRegion: MKCoordinateRegion) {
+        region = newRegion
+    }
+    
+    func centerMapOnUser() {
+        if let location = userLocation {
+            centerMapOnLocation(location)
+        } else if locationAuthorizationStatus == .notDetermined {
+            locationManager.requestWhenInUseAuthorization()
+        } else if locationAuthorizationStatus == .denied || locationAuthorizationStatus == .restricted {
+            locationError = "Please enable location services in Settings to see nearby videos."
+        }
     }
     
     func fetchVideo(id: String) async -> Video? {
@@ -43,20 +111,20 @@ class ExploreViewModel: NSObject, ObservableObject {
         
         // Calculate the bounding box for 25-mile radius
         let distanceInMeters = 40233.6 // 25 miles in meters
-        let region = MKCoordinateRegion(
+        let searchRegion = MKCoordinateRegion(
             center: userLocation.coordinate,
             latitudinalMeters: distanceInMeters,
             longitudinalMeters: distanceInMeters
         )
         
         let northEast = CLLocationCoordinate2D(
-            latitude: region.center.latitude + (region.span.latitudeDelta / 2),
-            longitude: region.center.longitude + (region.span.longitudeDelta / 2)
+            latitude: searchRegion.center.latitude + (searchRegion.span.latitudeDelta / 2),
+            longitude: searchRegion.center.longitude + (searchRegion.span.longitudeDelta / 2)
         )
         
         let southWest = CLLocationCoordinate2D(
-            latitude: region.center.latitude - (region.span.latitudeDelta / 2),
-            longitude: region.center.longitude - (region.span.longitudeDelta / 2)
+            latitude: searchRegion.center.latitude - (searchRegion.span.latitudeDelta / 2),
+            longitude: searchRegion.center.longitude - (searchRegion.span.longitudeDelta / 2)
         )
         
         // Query Firestore for videos within the bounding box
@@ -95,22 +163,28 @@ class ExploreViewModel: NSObject, ObservableObject {
 extension ExploreViewModel: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.first else { return }
-        userLocation = location
-        
-        // Update map region to center on user's location with a 25-mile radius
-        let distanceInMeters = 40233.6 // 25 miles in meters
-        region = MKCoordinateRegion(
-            center: location.coordinate,
-            latitudinalMeters: distanceInMeters,
-            longitudinalMeters: distanceInMeters
-        )
-        
-        // Fetch nearby videos when location updates
-        fetchNearbyVideos()
+        handleLocationUpdate(location, shouldCenterMap: !hasInitializedLocation)
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Location manager failed with error: \(error)")
+        locationError = "Unable to determine your location. Please try again."
+    }
+    
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        locationAuthorizationStatus = manager.authorizationStatus
+        
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            startLocationUpdates()
+            locationError = nil
+        case .denied, .restricted:
+            locationError = "Please enable location services in Settings to see nearby videos."
+        case .notDetermined:
+            manager.requestWhenInUseAuthorization()
+        @unknown default:
+            break
+        }
     }
 }
 

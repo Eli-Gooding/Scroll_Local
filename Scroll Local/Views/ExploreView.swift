@@ -7,46 +7,62 @@ struct ExploreView: View {
     @State private var showVideoDetail = false
     
     var body: some View {
-        ZStack {
-            // Map View
-            Map(coordinateRegion: $viewModel.region,
+        NavigationView {
+            ZStack(alignment: .bottom) {
+                // Map View
+                Map(coordinateRegion: Binding(
+                    get: { viewModel.region },
+                    set: { newRegion in
+                        withAnimation(.easeInOut) {
+                            viewModel.updateRegion(newRegion)
+                        }
+                    }
+                ),
                 showsUserLocation: true,
                 annotationItems: viewModel.videoAnnotations) { annotation in
-                MapAnnotation(coordinate: annotation.coordinate) {
-                    VideoThumbnailButton(annotation: annotation) {
-                        Task {
-                            if let video = await viewModel.fetchVideo(id: annotation.id) {
-                                selectedVideo = video
-                                showVideoDetail = true
+                    MapAnnotation(coordinate: annotation.coordinate) {
+                        VideoThumbnailButton(annotation: annotation) {
+                            Task {
+                                if let video = await viewModel.fetchVideo(id: annotation.id) {
+                                    selectedVideo = video
+                                    showVideoDetail = true
+                                }
                             }
                         }
                     }
                 }
-            }
-            .ignoresSafeArea()
-            
-            // Location Button
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        withAnimation {
-                            if let location = viewModel.userLocation {
-                                viewModel.region.center = location.coordinate
-                            }
+                .edgesIgnoringSafeArea([.horizontal])
+                .overlay {
+                    if let error = viewModel.locationError {
+                        VStack {
+                            Text(error)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Color.black.opacity(0.7))
+                                .cornerRadius(10)
+                                .padding()
+                            Spacer()
                         }
-                    }) {
-                        Image(systemName: "location.fill")
-                            .font(.title2)
-                            .padding()
-                            .background(Color(.systemBackground))
-                            .clipShape(Circle())
-                            .shadow(radius: 4)
                     }
-                    .padding()
                 }
+                
+                // Location Button
+                Button(action: {
+                    withAnimation(.easeInOut) {
+                        viewModel.centerMapOnUser()
+                    }
+                }) {
+                    Image(systemName: "location.fill")
+                        .font(.title2)
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .clipShape(Circle())
+                        .shadow(radius: 4)
+                }
+                .padding(.bottom, 30)
             }
+            .navigationTitle("Explore")
+            .navigationBarTitleDisplayMode(.inline)
         }
         .sheet(isPresented: $showVideoDetail) {
             if let video = selectedVideo {
