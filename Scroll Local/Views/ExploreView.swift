@@ -6,16 +6,11 @@ struct ExploreView: View {
     @StateObject private var viewModel = ExploreViewModel()
     @State private var selectedVideo: Video?
     @State private var showVideoDetail = false
-    @State private var cameraPosition: MapCameraPosition
+    @StateObject private var cameraPositionState = CameraPositionState()
     let initialLocation: GeoPoint?
     
     init(initialLocation: GeoPoint? = nil) {
         self.initialLocation = initialLocation
-        // Initialize camera position with the default region
-        _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
-            span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
-        )))
     }
     
     var body: some View {
@@ -41,14 +36,19 @@ struct ExploreView: View {
                     ),
                     span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
                 )
-                cameraPosition = .region(region)
+                cameraPositionState.position = .region(region)
+            } else {
+                // Only center on user location when first opening the view
+                viewModel.centerMapOnUser { region in
+                    cameraPositionState.position = .region(region)
+                }
             }
             viewModel.startLocationUpdates()
         }
     }
     
     private var mapView: some View {
-        Map(initialPosition: cameraPosition) {
+        Map(position: $cameraPositionState.position) {
             // User location marker
             if let userLocation = viewModel.userLocation,
                viewModel.locationAuthorizationStatus == .authorizedWhenInUse ||
@@ -75,12 +75,6 @@ struct ExploreView: View {
             }
         }
         .mapStyle(.standard)
-        .onMapCameraChange { context in
-            viewModel.updateRegion(context.region)
-            withAnimation {
-                cameraPosition = .region(context.region)
-            }
-        }
         .ignoresSafeArea(.container, edges: [.horizontal])
         .overlay {
             if let error = viewModel.locationError {
@@ -99,8 +93,10 @@ struct ExploreView: View {
     
     private var locationButton: some View {
         Button {
-            withAnimation(.easeInOut) {
-                viewModel.centerMapOnUser()
+            viewModel.centerMapOnUser { region in
+                withAnimation(.easeInOut) {
+                    cameraPositionState.position = .region(region)
+                }
             }
         } label: {
             Image(systemName: "location.fill")
@@ -156,6 +152,25 @@ struct VideoThumbnailButton: View {
     }
 }
 
+@MainActor
+class CameraPositionState: ObservableObject {
+    @Published var position: MapCameraPosition = .region(MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+        span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
+    ))
+}
+
 #Preview {
     ExploreView()
+}
+
+extension EnvironmentValues {
+    var cameraPosition: Binding<MapCameraPosition> {
+        get { self[CameraPositionKey.self] }
+        set { self[CameraPositionKey.self] = newValue }
+    }
+}
+
+private struct CameraPositionKey: EnvironmentKey {
+    static let defaultValue: Binding<MapCameraPosition> = .constant(.automatic)
 } 

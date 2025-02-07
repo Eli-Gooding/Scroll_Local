@@ -51,17 +51,13 @@ class ExploreViewModel: NSObject, ObservableObject {
         
         // If we already have a cached location, use it for initial setup
         if !hasInitializedLocation, let location = locationManager.location {
-            handleLocationUpdate(location, shouldCenterMap: true)
+            handleLocationUpdate(location)
         }
     }
     
-    private func handleLocationUpdate(_ location: CLLocation, shouldCenterMap: Bool = false) {
+    private func handleLocationUpdate(_ location: CLLocation) {
         userLocation = location
         locationError = nil
-        
-        if shouldCenterMap {
-            centerMapOnLocation(location)
-        }
         
         if !hasInitializedLocation {
             hasInitializedLocation = true
@@ -90,9 +86,16 @@ class ExploreViewModel: NSObject, ObservableObject {
         region = newRegion
     }
     
-    func centerMapOnUser() {
+    func centerMapOnUser(_ completion: @escaping (MKCoordinateRegion) -> Void) {
         if let location = userLocation {
-            centerMapOnLocation(location)
+            // Update map region to center on the given location with a 25-mile radius
+            let distanceInMeters = 40233.6 // 25 miles in meters
+            let newRegion = MKCoordinateRegion(
+                center: location.coordinate,
+                latitudinalMeters: distanceInMeters,
+                longitudinalMeters: distanceInMeters
+            )
+            completion(newRegion)
         } else if locationAuthorizationStatus == .notDetermined {
             locationManager.requestWhenInUseAuthorization()
         } else if locationAuthorizationStatus == .denied || locationAuthorizationStatus == .restricted {
@@ -168,7 +171,7 @@ class ExploreViewModel: NSObject, ObservableObject {
 extension ExploreViewModel: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.first else { return }
-        handleLocationUpdate(location, shouldCenterMap: !hasInitializedLocation)
+        handleLocationUpdate(location)
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
