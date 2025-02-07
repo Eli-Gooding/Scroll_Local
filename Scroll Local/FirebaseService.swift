@@ -268,4 +268,12 @@ class FirebaseService: ObservableObject {
     
     // Facebook Sign In will be added here
     // func signInWithFacebook() { }
+    
+    func updateProfile(displayName: String?, bio: String?) async throws {
+        try await ProfileService.shared.updateProfile(displayName: displayName, bio: bio)
+    }
+    
+    func uploadProfileImage(_ image: UIImage) async throws -> String {
+        return try await ProfileService.shared.uploadProfileImage(image)
+    }
 }

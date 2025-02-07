@@ -8,6 +8,8 @@ struct User {
     let id: String              // User's UID from Firebase Auth
     let email: String
     var displayName: String?
+    var bio: String?           // User's bio/description
+    var profileImageUrl: String? // URL to user's profile image in Storage
     let createdAt: Date
     var location: GeoPoint?
     var following: [String]     // Array of user IDs
@@ -168,6 +170,15 @@ service cloud.firestore {
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Profile pictures path
+    match /profile_pictures/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+                   request.auth.uid == userId &&
+                   request.resource.size < 5 * 1024 * 1024 && // 5MB max
+                   request.resource.contentType.matches('image/.*');
+    }
+
     // Videos path
     match /videos/{videoId} {
       allow read: if true;
