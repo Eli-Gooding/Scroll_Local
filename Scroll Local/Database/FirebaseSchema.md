@@ -8,6 +8,8 @@ struct User {
     let id: String              // User's UID from Firebase Auth
     let email: String
     var displayName: String?
+    var bio: String?           // User's bio/description
+    var profileImageUrl: String? // URL to user's profile image in Storage
     let createdAt: Date
     var location: GeoPoint?
     var following: [String]     // Array of user IDs
@@ -119,11 +121,17 @@ service cloud.firestore {
          request.auth.uid == messageData.receiverId);
     }
     
+    function isFollowOperation() {
+      // Only allow updates to followers and following arrays
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['followers', 'following']);
+    }
+    
     // Users collection
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && (isOwner(userId) || isFollowOperation());
       allow delete: if isSignedIn() && isOwner(userId);
     }
     
@@ -168,6 +176,15 @@ service cloud.firestore {
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Profile pictures path
+    match /profile_pictures/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+                   request.auth.uid == userId &&
+                   request.resource.size < 5 * 1024 * 1024 && // 5MB max
+                   request.resource.contentType.matches('image/.*');
+    }
+
     // Videos path
     match /videos/{videoId} {
       allow read: if true;
@@ -204,6 +221,19 @@ service firebase.storage {
 2. Tags + Time Index:
    - Fields:
      - `tags` (ARRAY_CONTAINS)
+     - `createdAt` (DESCENDING)
+   - Query scope: Collection
+
+3. User Posts Index:
+   - Fields:
+     - `user_id` (ASCENDING)
+     - `created_at` (DESCENDING)
+   - Query scope: Collection
+
+### VideoSaves Collection
+1. User Saves Index:
+   - Fields:
+     - `userId` (ASCENDING)
      - `createdAt` (DESCENDING)
    - Query scope: Collection
 
