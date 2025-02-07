@@ -5,7 +5,7 @@ struct VideoThumbnailView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            ZStack(alignment: .bottomLeading) {
+            ZStack(alignment: .bottom) {
                 // Thumbnail or placeholder
                 if let thumbnailUrl = video.thumbnailUrl,
                    let url = URL(string: thumbnailUrl) {
@@ -13,6 +13,7 @@ struct VideoThumbnailView: View {
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
+                            .frame(width: geometry.size.width, height: geometry.size.width)
                     } placeholder: {
                         ProgressView()
                     }
@@ -26,7 +27,7 @@ struct VideoThumbnailView: View {
                         }
                 }
                 
-                // Overlay with video info
+                // Info container with dark background
                 VStack(alignment: .leading, spacing: 2) {
                     Text(video.title)
                         .font(.caption)
@@ -53,13 +54,8 @@ struct VideoThumbnailView: View {
                 }
                 .padding(6)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    LinearGradient(
-                        gradient: Gradient(colors: [.black.opacity(0.7), .clear]),
-                        startPoint: .bottom,
-                        endPoint: .top
-                    )
-                )
+                .background(Color.black.opacity(0.7))
+                .frame(height: geometry.size.height * 0.27, alignment: .bottom)
                 .foregroundColor(.white)
             }
             .frame(width: geometry.size.width, height: geometry.size.width)
