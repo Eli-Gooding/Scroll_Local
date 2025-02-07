@@ -6,17 +6,22 @@ import UIKit
 public class CameraViewModel: NSObject, ObservableObject {
     @Published public var isRecording = false
     @Published public var recordedVideoURL: URL?
-    @Published public var previewLayer: AVCaptureVideoPreviewLayer?
     @Published public var showPermissionDenied = false
     
-    private var captureSession: AVCaptureSession?
+    private(set) var captureSession: AVCaptureSession?
     private var videoOutput: AVCaptureMovieFileOutput?
     private var currentDevice: AVCaptureDevice?
     private let locationManager = CLLocationManager()
     
+    // Dedicated serial queue for camera operations
+    private let cameraQueue = DispatchQueue(label: "com.scrolllocal.camera.session", qos: .userInteractive)
+    
     public override init() {
         super.init()
         locationManager.delegate = self
+        
+        // Initialize the session right away
+        captureSession = AVCaptureSession()
     }
     
     public func checkPermissions() {
@@ -49,13 +54,44 @@ public class CameraViewModel: NSObject, ObservableObject {
     }
     
     public func setupCamera() {
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        cameraQueue.async { [weak self] in
             self?.setupCameraInternal()
         }
     }
     
+    private func setupCameraInternal() {
+        guard let session = captureSession else { return }
+        
+        // Stop any existing session
+        if session.isRunning {
+            session.stopRunning()
+        }
+        
+        session.sessionPreset = .high
+        
+        // Configure the session
+        session.beginConfiguration()
+        
+        // Configure inputs and outputs
+        guard configureVideoInput(for: session),
+              configureAudioInput(for: session),
+              configureVideoOutput(for: session) else {
+            session.commitConfiguration()
+            return
+        }
+        
+        // Commit configuration
+        session.commitConfiguration()
+        
+        // Start the session
+        if !session.isRunning {
+            cameraQueue.async {
+                session.startRunning()
+            }
+        }
+    }
+    
     public func stopSession() {
-        let cameraQueue = DispatchQueue(label: "com.scrolllocal.camera.session")
         cameraQueue.async { [weak self] in
             guard let session = self?.captureSession, session.isRunning else { return }
             session.stopRunning()
@@ -63,120 +99,86 @@ public class CameraViewModel: NSObject, ObservableObject {
     }
     
     public func startSession() {
-        let cameraQueue = DispatchQueue(label: "com.scrolllocal.camera.session")
         cameraQueue.async { [weak self] in
             guard let session = self?.captureSession, !session.isRunning else { return }
             session.startRunning()
         }
     }
     
-    private func setupCameraInternal() {
-        // Create a serial queue for camera operations
-        let cameraQueue = DispatchQueue(label: "com.scrolllocal.camera.setup")
+    private func configureVideoInput(for session: AVCaptureSession) -> Bool {
+        guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+            print("Failed to get video device")
+            return false
+        }
         
-        cameraQueue.async { [weak self] in
-            guard let self = self else { return }
-            
-            // Stop any existing session
-            self.stopSession()
-            
-            // Create and configure capture session
-            let session = AVCaptureSession()
-            
-            // Start configuration
-            session.beginConfiguration()
-            
-            // Set session preset
-            session.sessionPreset = .high
-            
-            // Set up video input
-            guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
-                print("Failed to get video device")
-                return
+        do {
+            try videoDevice.lockForConfiguration()
+            if videoDevice.isFocusModeSupported(.continuousAutoFocus) {
+                videoDevice.focusMode = .continuousAutoFocus
             }
-            
-            do {
-                // Configure device for better preview
-                try videoDevice.lockForConfiguration()
-                if videoDevice.isFocusModeSupported(.continuousAutoFocus) {
-                    videoDevice.focusMode = .continuousAutoFocus
-                }
-                if videoDevice.isExposureModeSupported(.continuousAutoExposure) {
-                    videoDevice.exposureMode = .continuousAutoExposure
-                }
-                if videoDevice.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
-                    videoDevice.whiteBalanceMode = .continuousAutoWhiteBalance
-                }
-                videoDevice.unlockForConfiguration()
-                
-                let videoInput = try AVCaptureDeviceInput(device: videoDevice)
-                if session.canAddInput(videoInput) {
-                    session.addInput(videoInput)
-                } else {
-                    print("Cannot add video input")
-                    return
-                }
-            } catch {
-                print("Error setting up video input: \(error.localizedDescription)")
-                return
+            if videoDevice.isExposureModeSupported(.continuousAutoExposure) {
+                videoDevice.exposureMode = .continuousAutoExposure
             }
-            
-            // Set up audio input
-            guard let audioDevice = AVCaptureDevice.default(for: .audio) else {
-                print("Failed to get audio device")
-                return
+            if videoDevice.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
+                videoDevice.whiteBalanceMode = .continuousAutoWhiteBalance
             }
+            videoDevice.unlockForConfiguration()
             
-            do {
-                let audioInput = try AVCaptureDeviceInput(device: audioDevice)
-                if session.canAddInput(audioInput) {
-                    session.addInput(audioInput)
-                } else {
-                    print("Cannot add audio input")
+            let videoInput = try AVCaptureDeviceInput(device: videoDevice)
+            if session.canAddInput(videoInput) {
+                session.addInput(videoInput)
+                DispatchQueue.main.async { [weak self] in
+                    self?.currentDevice = videoDevice
                 }
-            } catch {
-                print("Error setting up audio input: \(error.localizedDescription)")
+                return true
             }
-            
-            // Set up video output
-            let output = AVCaptureMovieFileOutput()
-            if session.canAddOutput(output) {
-                session.addOutput(output)
-                
-                // Configure video orientation
-                if let connection = output.connection(with: .video) {
-                    if connection.isVideoOrientationSupported {
-                        connection.videoOrientation = .portrait
-                    }
-                    if connection.isVideoStabilizationSupported {
-                        connection.preferredVideoStabilizationMode = .auto
-                    }
-                }
-            } else {
-                print("Cannot add video output")
-                return
+        } catch {
+            print("Error setting up video input: \(error.localizedDescription)")
+        }
+        return false
+    }
+    
+    private func configureAudioInput(for session: AVCaptureSession) -> Bool {
+        guard let audioDevice = AVCaptureDevice.default(for: .audio) else {
+            print("Failed to get audio device")
+            return false
+        }
+        
+        do {
+            let audioInput = try AVCaptureDeviceInput(device: audioDevice)
+            if session.canAddInput(audioInput) {
+                session.addInput(audioInput)
+                return true
             }
-            
-            session.commitConfiguration()
-            
-            // Create and configure preview layer
-            let previewLayer = AVCaptureVideoPreviewLayer(session: session)
-            previewLayer.videoGravity = .resizeAspectFill
-            previewLayer.connection?.videoOrientation = .portrait
-            
-            // Update UI elements on main thread
-            DispatchQueue.main.async {
-                self.captureSession = session
-                self.videoOutput = output
-                self.previewLayer = previewLayer
-                self.currentDevice = videoDevice
-                
-                // Start the session on camera queue
-                cameraQueue.async {
-                    session.startRunning()
-                }
+        } catch {
+            print("Error setting up audio input: \(error.localizedDescription)")
+        }
+        return false
+    }
+    
+    private func configureVideoOutput(for session: AVCaptureSession) -> Bool {
+        let output = AVCaptureMovieFileOutput()
+        guard session.canAddOutput(output) else {
+            print("Cannot add video output")
+            return false
+        }
+        
+        session.addOutput(output)
+        if let connection = output.connection(with: .video) {
+            if #available(iOS 17.0, *) {
+                connection.videoRotationAngle = 0
+            } else if connection.isVideoOrientationSupported {
+                connection.videoOrientation = .portrait
+            }
+            if connection.isVideoStabilizationSupported {
+                connection.preferredVideoStabilizationMode = .auto
             }
         }
+        
+        DispatchQueue.main.async { [weak self] in
+            self?.videoOutput = output
+        }
+        return true
     }
     
     public func startRecording() {
@@ -207,36 +209,28 @@ public class CameraViewModel: NSObject, ObservableObject {
     }
     
     public func switchCamera() {
-        let cameraQueue = DispatchQueue(label: "com.scrolllocal.camera.switch")
         cameraQueue.async { [weak self] in
             guard let self = self,
                   let session = self.captureSession,
                   let currentDevice = self.currentDevice else { return }
             
-            // Get new camera position
             let newPosition: AVCaptureDevice.Position = currentDevice.position == .back ? .front : .back
-            
-            // Get new device
             guard let newDevice = AVCaptureDevice.default(.builtInWideAngleCamera,
                                                         for: .video,
-                                                        position: newPosition) else { return }
+                                                        position: newPosition),
+                  let newInput = try? AVCaptureDeviceInput(device: newDevice) else { return }
             
-            // Get new input
-            guard let newInput = try? AVCaptureDeviceInput(device: newDevice) else { return }
-            
-            // Remove old input and add new input
             session.beginConfiguration()
             if let input = session.inputs.first as? AVCaptureDeviceInput {
                 session.removeInput(input)
             }
             if session.canAddInput(newInput) {
                 session.addInput(newInput)
+                DispatchQueue.main.async {
+                    self.currentDevice = newDevice
+                }
             }
             session.commitConfiguration()
-            
-            DispatchQueue.main.async {
-                self.currentDevice = newDevice
-            }
         }
     }
     
