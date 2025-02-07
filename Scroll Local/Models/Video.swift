@@ -5,6 +5,7 @@ import FirebaseFirestore
 public struct Video: Identifiable, Equatable {
     public var id: String?
     public let userId: String
+    public var userDisplayName: String?
     public let title: String
     public let description: String
     public let location: String
@@ -17,6 +18,45 @@ public struct Video: Identifiable, Equatable {
     public var notHelpfulCount: Int
     public var saveCount: Int
     public var commentCount: Int
+    
+    public var firestoreData: [String: Any] {
+        return [
+            "user_id": userId,
+            "user_display_name": userDisplayName as Any,
+            "title": title,
+            "description": description,
+            "location": location,
+            "tags": tags,
+            "category": category,
+            "video_url": videoUrl,
+            "created_at": Timestamp(date: createdAt),
+            "views": views,
+            "helpful_count": helpfulCount,
+            "not_helpful_count": notHelpfulCount,
+            "save_count": saveCount,
+            "comment_count": commentCount
+        ]
+    }
+    
+    public init(userId: String, title: String, description: String, location: String,
+         tags: [String], category: String, videoUrl: String, createdAt: Date,
+         views: Int, helpfulCount: Int, notHelpfulCount: Int, saveCount: Int, commentCount: Int,
+         userDisplayName: String? = nil) {
+        self.userId = userId
+        self.userDisplayName = userDisplayName
+        self.title = title
+        self.description = description
+        self.location = location
+        self.tags = tags
+        self.category = category
+        self.videoUrl = videoUrl
+        self.createdAt = createdAt
+        self.views = views
+        self.helpfulCount = helpfulCount
+        self.notHelpfulCount = notHelpfulCount
+        self.saveCount = saveCount
+        self.commentCount = commentCount
+    }
     
     public init?(id: String, data: [String: Any]) {
         self.id = id
@@ -37,6 +77,7 @@ public struct Video: Identifiable, Equatable {
         }
         
         self.userId = userId
+        self.userDisplayName = data["user_display_name"] as? String
         self.title = title
         self.description = description
         self.location = location
