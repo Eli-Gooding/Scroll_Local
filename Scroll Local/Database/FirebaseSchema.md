@@ -121,11 +121,17 @@ service cloud.firestore {
          request.auth.uid == messageData.receiverId);
     }
     
+    function isFollowOperation() {
+      // Only allow updates to followers and following arrays
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['followers', 'following']);
+    }
+    
     // Users collection
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && (isOwner(userId) || isFollowOperation());
       allow delete: if isSignedIn() && isOwner(userId);
     }
     
