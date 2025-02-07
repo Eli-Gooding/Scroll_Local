@@ -38,8 +38,8 @@ struct ProfileView: View {
                         // Stats
                         HStack(spacing: 28) {
                             StatView(value: "\(viewModel.userPosts.count)", title: "Posts")
-                            StatView(value: "128", title: "Followers")
-                            StatView(value: "164", title: "Following")
+                            StatView(value: "\(viewModel.followerCount)", title: "Followers")
+                            StatView(value: "\(viewModel.followingCount)", title: "Following")
                         }
                     }
                     .padding(.horizontal)

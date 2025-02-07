@@ -6,6 +6,8 @@ import FirebaseAuth
 class ProfileViewModel: ObservableObject {
     @Published private(set) var userPosts: [Video] = []
     @Published private(set) var savedVideos: [Video] = []
+    @Published private(set) var followerCount: Int = 0
+    @Published private(set) var followingCount: Int = 0
     @Published var isLoading = false
     @Published var error: Error?
     
@@ -28,12 +30,34 @@ class ProfileViewModel: ObservableObject {
             userPosts = snapshot.documents.compactMap { doc in
                 Video(id: doc.documentID, data: doc.data())
             }
+            
+            // Update follower and following counts
+            await updateFollowCounts()
         } catch {
             self.error = error
             print("Error fetching user posts: \(error)")
         }
         
         isLoading = false
+    }
+    
+    private func updateFollowCounts() async {
+        do {
+            guard let userId = Auth.auth().currentUser?.uid else { return }
+            
+            let userDoc = try await db.collection("users").document(userId).getDocument()
+            guard let userData = userDoc.data() else { return }
+            
+            let followers = userData["followers"] as? [String] ?? []
+            let following = userData["following"] as? [String] ?? []
+            
+            await MainActor.run {
+                self.followerCount = followers.count
+                self.followingCount = following.count
+            }
+        } catch {
+            print("Error updating follow counts: \(error)")
+        }
     }
     
     func fetchSavedVideos() async {
