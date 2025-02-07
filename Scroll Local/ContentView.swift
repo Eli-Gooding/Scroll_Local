@@ -133,14 +133,6 @@ struct SearchView: View {
     }
 }
 
-
-
-struct ExploreView: View {
-    var body: some View {
-        Text("Map View Coming Soon")
-    }
-}
-
 struct SavedVideosView: View {
     var body: some View {
         Text("Saved Videos Coming Soon")

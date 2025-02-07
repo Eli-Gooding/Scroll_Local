@@ -199,11 +199,13 @@ struct VideoCard: View {
                             .font(.custom("AvenirNext-Medium", size: 16))
                             .foregroundColor(.white)
                             Text("•")
-                            Text(video.location)
-                                .font(.custom("AvenirNext-Medium", size: 16))
-                                .padding(.horizontal, 8)
-                                .background(Color.accentColor.opacity(0.3))
-                                .clipShape(Capsule())
+                            NavigationLink(destination: ExploreView(initialLocation: video.location)) {
+                                Text(video.formattedLocation)
+                                    .font(.custom("AvenirNext-Medium", size: 16))
+                                    .padding(.horizontal, 8)
+                                    .background(Color.accentColor.opacity(0.3))
+                                    .clipShape(Capsule())
+                            }
                         }
                         
                         Text(video.description)

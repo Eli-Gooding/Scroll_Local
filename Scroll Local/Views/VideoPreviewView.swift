@@ -12,6 +12,7 @@ struct VideoPreviewView: View {
     @State private var showMetadataForm = false
     @Environment(\.presentationMode) var presentationMode
     @StateObject private var locationManager = LocationManager()
+    private let geocoder = CLGeocoder()
     
     var body: some View {
         NavigationView {
@@ -101,11 +102,26 @@ struct VideoPreviewView: View {
                 // Get download URL
                 let downloadURL = try await videoRef.downloadURL()
                 
-                // Create video document in Firestore
-                let locationString = if let location = metadata.location {
-                    "\(location.latitude),\(location.longitude)"
-                } else {
-                    ""
+                // Get formatted location
+                var geoPoint = GeoPoint(latitude: 0, longitude: 0)
+                var formattedLocation = "Unknown Location"
+                
+                if let coordinate = metadata.location {
+                    geoPoint = GeoPoint(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                    if let placemark = try? await geocoder.reverseGeocodeLocation(CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)).first {
+                        // Build location string
+                        var components: [String] = []
+                        if let locality = placemark.locality {
+                            components.append(locality)
+                        }
+                        if let administrativeArea = placemark.administrativeArea {
+                            components.append(administrativeArea)
+                        }
+                        if let country = placemark.country {
+                            components.append(country)
+                        }
+                        formattedLocation = components.joined(separator: ", ")
+                    }
                 }
                 
                 // Try to get the current user's display name, but don't fail if we can't
@@ -122,8 +138,9 @@ struct VideoPreviewView: View {
                     userId: userId,
                     title: title,
                     description: description,
-                    location: locationString,
-                    tags: tags,  // Use the parsed tags
+                    location: geoPoint,
+                    formattedLocation: formattedLocation,
+                    tags: tags,
                     category: category,
                     videoUrl: downloadURL.absoluteString,
                     createdAt: Date(),

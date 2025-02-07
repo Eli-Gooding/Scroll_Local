@@ -251,6 +251,12 @@ class FeedViewModel: ObservableObject {
     
     // Fetch user interactions for videos
     private func fetchUserInteractions(for videoIds: [String], userId: String) async {
+        // Guard against empty video IDs array
+        guard !videoIds.isEmpty else {
+            print("No videos to fetch interactions for")
+            return
+        }
+        
         do {
             // Fetch saves
             let savesSnapshot = try await db.collection("videoSaves")

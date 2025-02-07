@@ -1,5 +1,6 @@
 import Foundation
 import FirebaseFirestore
+import CoreLocation
 
 // Make the Video model public so it can be accessed from other files
 public struct Video: Identifiable, Equatable {
@@ -8,7 +9,8 @@ public struct Video: Identifiable, Equatable {
     public var userDisplayName: String?
     public let title: String
     public let description: String
-    public let location: String
+    public let location: GeoPoint  // Store as GeoPoint
+    public let formattedLocation: String  // Store formatted location
     public let tags: [String]
     public let category: String
     public let videoUrl: String
@@ -27,6 +29,7 @@ public struct Video: Identifiable, Equatable {
             "title": title,
             "description": description,
             "location": location,
+            "formatted_location": formattedLocation,
             "tags": tags,
             "category": category,
             "video_url": videoUrl,
@@ -40,8 +43,8 @@ public struct Video: Identifiable, Equatable {
         ]
     }
     
-    public init(userId: String, title: String, description: String, location: String,
-         tags: [String], category: String, videoUrl: String, createdAt: Date,
+    public init(userId: String, title: String, description: String, location: GeoPoint,
+         formattedLocation: String, tags: [String], category: String, videoUrl: String, createdAt: Date,
          views: Int, helpfulCount: Int, notHelpfulCount: Int, saveCount: Int, commentCount: Int,
          userDisplayName: String? = nil, thumbnailUrl: String? = nil) {
         self.userId = userId
@@ -49,6 +52,7 @@ public struct Video: Identifiable, Equatable {
         self.title = title
         self.description = description
         self.location = location
+        self.formattedLocation = formattedLocation
         self.tags = tags
         self.category = category
         self.videoUrl = videoUrl
@@ -66,7 +70,8 @@ public struct Video: Identifiable, Equatable {
         guard let userId = data["user_id"] as? String,
               let title = data["title"] as? String,
               let description = data["description"] as? String,
-              let location = data["location"] as? String,
+              let location = data["location"] as? GeoPoint,
+              let formattedLocation = data["formatted_location"] as? String,
               let tags = data["tags"] as? [String],
               let category = data["category"] as? String,
               let videoUrl = data["video_url"] as? String,
@@ -84,6 +89,7 @@ public struct Video: Identifiable, Equatable {
         self.title = title
         self.description = description
         self.location = location
+        self.formattedLocation = formattedLocation
         self.tags = tags
         self.category = category
         self.videoUrl = videoUrl
@@ -94,5 +100,9 @@ public struct Video: Identifiable, Equatable {
         self.notHelpfulCount = notHelpfulCount
         self.saveCount = saveCount
         self.commentCount = commentCount
+    }
+    
+    public static func == (lhs: Video, rhs: Video) -> Bool {
+        return lhs.id == rhs.id
     }
 } 

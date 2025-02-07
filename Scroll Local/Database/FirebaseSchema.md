@@ -22,18 +22,21 @@ struct User {
 struct Video {
     let id: String
     let userId: String          // Reference to users collection
+    let userDisplayName: String? // Display name of the user who posted the video
     let title: String
-    var description: String?
-    let url: String
-    let thumbnailUrl: String
-    let location: GeoPoint
+    var description: String
+    let videoUrl: String        // URL to video in Storage
+    let thumbnailUrl: String?   // URL to thumbnail in Storage
+    let location: GeoPoint      // Geographic coordinates
+    let formattedLocation: String // Human-readable location (e.g., "San Francisco, CA, USA")
     let createdAt: Date
     var views: Int
-    var save_count: Int         // Total number of saves
-    var helpful_count: Int      // Total number of helpful ratings
-    var not_helpful_count: Int   // Total number of not helpful ratings
-    var tags: [String]
-    var isPublic: Bool
+    var saveCount: Int         // Total number of saves
+    var helpfulCount: Int      // Total number of helpful ratings
+    var notHelpfulCount: Int   // Total number of not helpful ratings
+    var commentCount: Int      // Total number of comments
+    var tags: [String]        // Array of hashtags
+    var category: String      // Video category
 }
 ```
 

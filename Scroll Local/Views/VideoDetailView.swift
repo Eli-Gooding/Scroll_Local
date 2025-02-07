@@ -1,5 +1,6 @@
 import SwiftUI
 import AVKit
+import FirebaseFirestore
 
 struct VideoDetailView: View {
     let video: Video
@@ -56,99 +57,54 @@ struct VideoDetailView: View {
                                 .font(.title2)
                                 .foregroundColor(.white)
                         }
+                        .padding()
                         Spacer()
                     }
-                    .padding()
-                    .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: [.black.opacity(0.7), .clear]),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
+                    .background(LinearGradient(
+                        gradient: Gradient(colors: [.black.opacity(0.6), .clear]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ))
                     
                     Spacer()
                     
-                    // Bottom info and interactions
-                    HStack(alignment: .bottom) {
-                        // Left side: Title and description
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(video.title)
-                                .font(.custom("AvenirNext-Bold", size: 24))
-                                .foregroundStyle(.white)
-                            
-                            HStack {
-                                NavigationLink(destination: OtherUserProfileView(userId: video.userId)) {
-                                    Text(video.userDisplayName ?? video.userId)
-                                }
-                                .font(.custom("AvenirNext-Medium", size: 16))
-                                .foregroundColor(.white)
-                                Text("•")
-                                Text(video.location)
+                    // Bottom overlay with video info
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(video.title)
+                            .font(.custom("AvenirNext-Bold", size: 24))
+                            .foregroundStyle(.white)
+                        
+                        HStack {
+                            NavigationLink(destination: OtherUserProfileView(userId: video.userId)) {
+                                Text(video.userDisplayName ?? video.userId)
+                            }
+                            .font(.custom("AvenirNext-Medium", size: 16))
+                            .foregroundColor(.white)
+                            Text("•")
+                            NavigationLink(destination: ExploreView(initialLocation: video.location)) {
+                                Text(video.formattedLocation)
                                     .font(.custom("AvenirNext-Medium", size: 16))
                                     .padding(.horizontal, 8)
                                     .background(Color.accentColor.opacity(0.3))
                                     .clipShape(Capsule())
                             }
-                            
-                            Text(video.description)
-                                .font(.custom("AvenirNext-Regular", size: 15))
-                                .lineLimit(isDescriptionExpanded ? nil : 2)
-                                .onTapGesture {
-                                    withAnimation(.easeInOut) {
-                                        isDescriptionExpanded.toggle()
-                                    }
-                                }
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.trailing, 20)
                         
-                        // Right side: Interaction buttons
-                        VStack(spacing: 20) {
-                            InteractionButton(
-                                icon: "bookmark.fill",
-                                count: "\(video.saveCount)",
-                                isActive: video.id.map(viewModel.isVideoSaved) ?? false
-                            )
+                        Text(video.description)
+                            .font(.custom("AvenirNext-Regular", size: 15))
+                            .lineLimit(isDescriptionExpanded ? nil : 2)
                             .onTapGesture {
-                                if let videoId = video.id {
-                                    Task {
-                                        await viewModel.toggleSave(for: videoId)
-                                    }
+                                withAnimation(.easeInOut) {
+                                    isDescriptionExpanded.toggle()
                                 }
                             }
-                            
-                            InteractionButton(icon: "bubble.left.fill", count: "\(commentViewModel.commentCount)")
-                                .onTapGesture {
-                                    commentViewModel.loadComments(for: video.id ?? "")
-                                    withAnimation(.spring()) {
-                                        showComments = true
-                                    }
-                                }
-                            
-                            VStack(spacing: 12) {
-                                InteractionButton(icon: "square.and.arrow.up.fill", count: "Share")
-                                
-                                let rating = video.id.map(viewModel.getVideoRating) ?? 0
-                                InteractionButton(
-                                    icon: rating == -1 ? "hand.thumbsdown.fill" : "hand.thumbsup.fill",
-                                    count: "Rate",
-                                    isActive: rating != 0
-                                )
-                                .onTapGesture {
-                                    showRating = true
-                                }
-                            }
-                        }
                     }
                     .padding()
-                    .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: [.clear, .black.opacity(0.7)]),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
+                    .background(LinearGradient(
+                        gradient: Gradient(colors: [.clear, .black.opacity(0.8)]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ))
                 }
             }
             .sheet(isPresented: $showComments) {
