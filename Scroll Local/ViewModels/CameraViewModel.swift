@@ -7,8 +7,8 @@ public class CameraViewModel: NSObject, ObservableObject {
     @Published public var isRecording = false
     @Published public var recordedVideoURL: URL?
     @Published public var showPermissionDenied = false
+    @Published public private(set) var captureSession: AVCaptureSession?
     
-    private(set) var captureSession: AVCaptureSession?
     private var videoOutput: AVCaptureMovieFileOutput?
     private var currentDevice: AVCaptureDevice?
     private let locationManager = CLLocationManager()
@@ -19,9 +19,6 @@ public class CameraViewModel: NSObject, ObservableObject {
     public override init() {
         super.init()
         locationManager.delegate = self
-        
-        // Initialize the session right away
-        captureSession = AVCaptureSession()
     }
     
     public func checkPermissions() {
@@ -55,6 +52,13 @@ public class CameraViewModel: NSObject, ObservableObject {
     
     public func setupCamera() {
         cameraQueue.async { [weak self] in
+            // Create a new session if needed
+            if self?.captureSession == nil {
+                let newSession = AVCaptureSession()
+                DispatchQueue.main.async {
+                    self?.captureSession = newSession
+                }
+            }
             self?.setupCameraInternal()
         }
     }
@@ -93,8 +97,27 @@ public class CameraViewModel: NSObject, ObservableObject {
     
     public func stopSession() {
         cameraQueue.async { [weak self] in
-            guard let session = self?.captureSession, session.isRunning else { return }
-            session.stopRunning()
+            guard let session = self?.captureSession else { return }
+            
+            // Stop the session if running
+            if session.isRunning {
+                session.stopRunning()
+            }
+            
+            // Remove all inputs and outputs
+            for input in session.inputs {
+                session.removeInput(input)
+            }
+            for output in session.outputs {
+                session.removeOutput(output)
+            }
+            
+            // Clear the session reference
+            DispatchQueue.main.async {
+                self?.videoOutput = nil
+                self?.currentDevice = nil
+                self?.captureSession = nil
+            }
         }
     }
     
@@ -127,8 +150,9 @@ public class CameraViewModel: NSObject, ObservableObject {
             let videoInput = try AVCaptureDeviceInput(device: videoDevice)
             if session.canAddInput(videoInput) {
                 session.addInput(videoInput)
+                let device = videoDevice // Capture in local variable
                 DispatchQueue.main.async { [weak self] in
-                    self?.currentDevice = videoDevice
+                    self?.currentDevice = device
                 }
                 return true
             }
@@ -255,7 +279,9 @@ extension CameraViewModel: AVCaptureFileOutputRecordingDelegate {
                    from connections: [AVCaptureConnection],
                    error: Error?) {
         if error == nil {
-            self.recordedVideoURL = outputFileURL
+            DispatchQueue.main.async { [weak self] in
+                self?.recordedVideoURL = outputFileURL
+            }
         }
     }
 }
