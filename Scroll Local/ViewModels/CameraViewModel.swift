@@ -165,13 +165,19 @@ public class CameraViewModel: NSObject, ObservableObject {
         
         session.addOutput(output)
         if let connection = output.connection(with: .video) {
-            if #available(iOS 17.0, *) {
-                connection.videoRotationAngle = 0
-            } else if connection.isVideoOrientationSupported {
+            // Set video orientation based on device position
+            if connection.isVideoOrientationSupported {
                 connection.videoOrientation = .portrait
             }
+            
+            // Enable video stabilization if supported
             if connection.isVideoStabilizationSupported {
                 connection.preferredVideoStabilizationMode = .auto
+            }
+            
+            // Handle mirroring for front camera
+            if let device = currentDevice {
+                connection.isVideoMirrored = (device.position == .front)
             }
         }
         
