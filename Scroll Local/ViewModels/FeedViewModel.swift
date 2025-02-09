@@ -498,4 +498,9 @@ class FeedViewModel: ObservableObject {
         
         isLoading = false
     }
+    
+    // Protected method for subclasses to update videos
+    func updateVideos(_ newVideos: [Video]) {
+        videos = newVideos
+    }
 } 
