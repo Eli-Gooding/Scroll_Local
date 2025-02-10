@@ -2,6 +2,13 @@ import SwiftUI
 import MapKit
 import FirebaseFirestore
 
+// Add Equatable conformance to CLLocationCoordinate2D
+extension CLLocationCoordinate2D: Equatable {
+    public static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {
+        return lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
+    }
+}
+
 struct ExploreView: View {
     @StateObject private var viewModel = ExploreViewModel()
     @State private var selectedVideo: Video?
@@ -62,15 +69,17 @@ struct ExploreView: View {
             }
         }
         .sheet(isPresented: $showLocationFeed) {
-            Group {
-                if let location = selectedLocation {
-                    print("📱 Presenting LocationFeedView for coordinate: \(location)")
-                    LocationFeedView(coordinate: location)
-                        .presentationDetents([.medium, .large])
-                } else {
-                    print("⚠️ No location available for LocationFeedView")
-                    Color.clear
-                }
+            if let location = selectedLocation {
+                LocationFeedView(coordinate: location)
+                    .presentationDetents([.medium, .large])
+                    .onAppear {
+                        print("📱 Presenting LocationFeedView for coordinate: \(location)")
+                    }
+            } else {
+                Color.clear
+                    .onAppear {
+                        print("⚠️ No location available for LocationFeedView")
+                    }
             }
         }
         .onAppear {
@@ -110,28 +119,31 @@ private struct ExploreMapView: View {
     
     var body: some View {
         MapReader { proxy in
-            Map(position: $cameraPosition, interactionModes: isSearchMode ? [] : .all) {
-                UserLocationMarker(userLocation: viewModel.userLocation)
-                VideoMarkersAndOverlays(
-                    viewModel: viewModel,
-                    selectedVideo: $selectedVideo,
-                    showVideoDetail: $showVideoDetail
-                )
-            }
-            .mapStyle(.standard)
-            .contentShape(Rectangle())  // Make sure the entire map is tappable
-            .onTapGesture { screenPoint in
+            ZStack {
+                Map(position: $cameraPosition, interactionModes: isSearchMode ? [.zoom] : .all) {
+                    UserLocationMarker(userLocation: viewModel.userLocation)
+                    VideoMarkersAndOverlays(
+                        viewModel: viewModel,
+                        selectedVideo: $selectedVideo,
+                        showVideoDetail: $showVideoDetail
+                    )
+                }
+                .mapStyle(.standard)
+                
                 if isSearchMode {
-                    print("🗺 Map tapped at screen point: \(screenPoint)")
-                    if let coordinate = proxy.convert(screenPoint, from: .local) {
-                        print("📍 Converted to coordinate: \(coordinate)")
-                        handleMapTap(at: coordinate)
-                    } else {
-                        print("❌ Failed to convert screen point to coordinate")
-                    }
+                    // Transparent overlay to catch taps
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { location in
+                            print("🗺 Map tapped at point: \(location)")
+                            if let coordinate = proxy.convert(location, from: .local) {
+                                print("📍 Converted to coordinate: \(coordinate)")
+                                handleMapTap(at: coordinate)
+                            }
+                        }
                 }
             }
-            .overlay(searchModeOverlay)
+            .overlay(searchModeOverlay.allowsHitTesting(false))
             .onAppear {
                 print("🗺 Map view appeared")
             }
@@ -139,23 +151,16 @@ private struct ExploreMapView: View {
                 print("📍 Annotations updated: \(newAnnotations.count)")
             }
             .ignoresSafeArea(SafeAreaRegions.container, edges: [Edge.Set.horizontal])
-            .overlay(errorOverlay)
+            .overlay(errorOverlay.allowsHitTesting(false))
         }
     }
     
     private func handleMapTap(at location: CLLocationCoordinate2D) {
         print("🎯 Handling map tap at: \(location)")
-        print("🔍 Current search mode: \(isSearchMode)")
         selectedLocation = location
-        print("📱 Selected location set to: \(String(describing: selectedLocation))")
+        print("📱 Selected location set to: \(location)")
         showLocationFeed = true
-        print("🔄 showLocationFeed set to: \(showLocationFeed)")
-        
-        // Force a UI update
-        DispatchQueue.main.async {
-            print("🔄 Forcing UI update after tap")
-            showLocationFeed = true
-        }
+        print("🔄 Attempting to show location feed")
     }
     
     @ViewBuilder
