@@ -2,66 +2,247 @@ import SwiftUI
 import MapKit
 import FirebaseFirestore
 
+// Add Equatable conformance to CLLocationCoordinate2D
+extension CLLocationCoordinate2D: Equatable {
+    public static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {
+        return lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
+    }
+}
+
 struct ExploreView: View {
     @StateObject private var viewModel = ExploreViewModel()
     @State private var selectedVideo: Video?
     @State private var showVideoDetail = false
-    @StateObject private var cameraPositionState = CameraPositionState()
+    @State private var isSearchMode = false
+    @State private var showLocationFeed = false
+    @State private var selectedLocation: CLLocationCoordinate2D?
+    @State private var cameraPosition: MapCameraPosition
     let initialLocation: GeoPoint?
     
     init(initialLocation: GeoPoint? = nil) {
         self.initialLocation = initialLocation
+        let initialRegion = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+            span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
+        )
+        _cameraPosition = State(initialValue: .region(initialRegion))
     }
     
     var body: some View {
         NavigationView {
-            ZStack(alignment: .bottom) {
-                mapView
-                locationButton
+            ZStack(alignment: .bottomTrailing) {
+                ExploreMapView(
+                    viewModel: viewModel,
+                    cameraPosition: $cameraPosition,
+                    isSearchMode: isSearchMode,
+                    selectedVideo: $selectedVideo,
+                    showVideoDetail: $showVideoDetail,
+                    selectedLocation: $selectedLocation,
+                    showLocationFeed: $showLocationFeed
+                )
+                
+                VStack(alignment: .trailing, spacing: 8) {
+                    CategoryToggleList(viewModel: viewModel)
+                    ExploreControlButtons(
+                        isSearchMode: $isSearchMode,
+                        viewModel: viewModel,
+                        cameraPosition: $cameraPosition
+                    )
+                }
+                .padding()
             }
             .navigationTitle("Explore")
             .navigationBarTitleDisplayMode(.inline)
+        }
+        .onChange(of: isSearchMode) { newValue in
+            print("🔍 Search mode changed to: \(newValue)")
+        }
+        .onChange(of: selectedLocation) { newValue in
+            print("📍 Selected location changed to: \(String(describing: newValue))")
+        }
+        .onChange(of: showLocationFeed) { newValue in
+            print("🎬 Show location feed changed to: \(newValue)")
         }
         .sheet(isPresented: $showVideoDetail) {
             if let video = selectedVideo {
                 VideoDetailView(video: video)
             }
         }
-        .onAppear {
-            if let location = initialLocation {
-                let region = MKCoordinateRegion(
-                    center: CLLocationCoordinate2D(
-                        latitude: location.latitude,
-                        longitude: location.longitude
-                    ),
-                    span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
+        .sheet(isPresented: $showLocationFeed) {
+            if let location = selectedLocation {
+                LocationFeedView(
+                    coordinate: location,
+                    searchRadius: viewModel.circleRadius,
+                    selectedCategories: viewModel.selectedCategories
                 )
-                cameraPositionState.position = .region(region)
+                    .presentationDetents([.medium, .large])
+                    .onAppear {
+                        print("📱 Presenting LocationFeedView for coordinate: \(location) with radius: \(viewModel.circleRadius)m and categories: \(viewModel.selectedCategories)")
+                    }
             } else {
-                // Only center on user location when first opening the view
-                viewModel.centerMapOnUser { region in
-                    cameraPositionState.position = .region(region)
-                }
+                Color.clear
+                    .onAppear {
+                        print("⚠️ No location available for LocationFeedView")
+                    }
             }
-            viewModel.startLocationUpdates()
+        }
+        .onAppear {
+            handleInitialLocation()
         }
     }
     
-    private var mapView: some View {
-        Map(position: $cameraPositionState.position) {
-            // User location marker
-            if let userLocation = viewModel.userLocation,
-               viewModel.locationAuthorizationStatus == .authorizedWhenInUse ||
-               viewModel.locationAuthorizationStatus == .authorizedAlways {
-                Marker(coordinate: userLocation.coordinate) {
-                    Image(systemName: "location.fill")
-                        .foregroundStyle(.white)
-                        .background(Circle().fill(.blue))
+    private func handleInitialLocation() {
+        if let location = initialLocation {
+            let region = MKCoordinateRegion(
+                center: CLLocationCoordinate2D(
+                    latitude: location.latitude,
+                    longitude: location.longitude
+                ),
+                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+            )
+            viewModel.updateRegion(region)
+            cameraPosition = .region(region)
+        } else {
+            viewModel.startLocationUpdates()
+            viewModel.centerMapOnUser { region in
+                cameraPosition = .region(region)
+            }
+        }
+    }
+}
+
+// MARK: - Map View Component
+private struct ExploreMapView: View {
+    @ObservedObject var viewModel: ExploreViewModel
+    @Binding var cameraPosition: MapCameraPosition
+    let isSearchMode: Bool
+    @Binding var selectedVideo: Video?
+    @Binding var showVideoDetail: Bool
+    @Binding var selectedLocation: CLLocationCoordinate2D?
+    @Binding var showLocationFeed: Bool
+    
+    var body: some View {
+        MapReader { proxy in
+            ZStack {
+                Map(position: $cameraPosition, interactionModes: isSearchMode ? [.zoom] : .all) {
+                    UserLocationMarker(userLocation: viewModel.userLocation)
+                    VideoMarkersAndOverlays(
+                        viewModel: viewModel,
+                        selectedVideo: $selectedVideo,
+                        showVideoDetail: $showVideoDetail
+                    )
+                }
+                .mapStyle(.standard)
+                
+                if isSearchMode {
+                    // Transparent overlay to catch taps
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { location in
+                            print("🗺 Map tapped at point: \(location)")
+                            if let coordinate = proxy.convert(location, from: .local) {
+                                print("📍 Converted to coordinate: \(coordinate)")
+                                handleMapTap(at: coordinate)
+                            }
+                        }
                 }
             }
-            
-            // Video markers
-            ForEach(viewModel.videoAnnotations) { annotation in
+            .overlay(searchModeOverlay.allowsHitTesting(false))
+            .onAppear {
+                print("🗺 Map view appeared")
+            }
+            .onChange(of: viewModel.videoAnnotations) { _, newAnnotations in
+                print("📍 Annotations updated: \(newAnnotations.count)")
+            }
+            .ignoresSafeArea(SafeAreaRegions.container, edges: [Edge.Set.horizontal])
+            .overlay(errorOverlay.allowsHitTesting(false))
+        }
+    }
+    
+    private func handleMapTap(at location: CLLocationCoordinate2D) {
+        print("🎯 Handling map tap at: \(location)")
+        selectedLocation = location
+        print("📱 Selected location set to: \(location)")
+        showLocationFeed = true
+        print("🔄 Attempting to show location feed")
+    }
+    
+    @ViewBuilder
+    private var searchModeOverlay: some View {
+        if isSearchMode {
+            VStack {
+                // Top banner
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles.tv.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.white)
+                        .scaleEffect(1.1)
+                        .animation(.easeInOut(duration: 1).repeatForever(), value: true)
+                    
+                    Text("Tap anywhere to discover local gems!")
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .shadow(radius: 1)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color.accentColor.opacity(0.9))
+                        .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 2)
+                )
+                .padding(.top, 8)
+                
+                Spacer()
+                
+                // Semi-transparent overlay for the map
+                Color.black.opacity(0.05)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var errorOverlay: some View {
+        if let error = viewModel.locationError {
+            VStack {
+                Text(error)
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(Color.black.opacity(0.7))
+                    .cornerRadius(10)
+                    .padding()
+                Spacer()
+            }
+        }
+    }
+}
+
+// MARK: - User Location Marker Component
+private struct UserLocationMarker: MapContent {
+    let userLocation: CLLocation?
+    
+    var body: some MapContent {
+        if let location = userLocation {
+            Marker("My Location", coordinate: location.coordinate)
+                .tint(.blue)
+        }
+    }
+}
+
+// MARK: - Video Markers and Overlays Component
+private struct VideoMarkersAndOverlays: MapContent {
+    @ObservedObject var viewModel: ExploreViewModel
+    @Binding var selectedVideo: Video?
+    @Binding var showVideoDetail: Bool
+    
+    var body: some MapContent {
+        ForEach(viewModel.videoAnnotations) { annotation in
+            if let category = VideoCategory(rawValue: annotation.category),
+               viewModel.selectedCategories.contains(category) {
+                MapCircle(center: annotation.coordinate, radius: viewModel.circleRadius)
+                    .foregroundStyle(category.color.opacity(0.2))
+                    .stroke(category.color.opacity(0.4), lineWidth: 1)
+                
                 Marker(coordinate: annotation.coordinate) {
                     VideoThumbnailButton(annotation: annotation) {
                         Task {
@@ -74,103 +255,144 @@ struct ExploreView: View {
                 }
             }
         }
-        .mapStyle(.standard)
-        .ignoresSafeArea(.container, edges: [.horizontal])
-        .overlay {
-            if let error = viewModel.locationError {
-                VStack {
-                    Text(error)
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(10)
-                        .padding()
-                    Spacer()
-                }
+    }
+}
+
+// MARK: - Category Toggle List Component
+private struct CategoryToggleList: View {
+    @ObservedObject var viewModel: ExploreViewModel
+    
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 8) {
+            ForEach(VideoCategory.allCases, id: \.self) { category in
+                CategoryToggleButton(
+                    category: category,
+                    isSelected: viewModel.selectedCategories.contains(category),
+                    action: { viewModel.toggleCategory(category) }
+                )
             }
         }
     }
+}
+
+// MARK: - Category Toggle Button Component
+private struct CategoryToggleButton: View {
+    let category: VideoCategory
+    let isSelected: Bool
+    let action: () -> Void
     
-    private var locationButton: some View {
+    var body: some View {
+        Button(action: {
+            print("🔄 Toggling category: \(category.rawValue), was selected: \(isSelected)")
+            action()
+        }) {
+            HStack {
+                Text(category.rawValue)
+                    .font(.caption)
+                    .foregroundColor(.white)
+                Circle()
+                    .fill(category.color)
+                    .frame(width: 12, height: 12)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(isSelected ?
+                          category.color.opacity(0.3) :
+                            Color.black.opacity(0.5))
+            )
+        }
+    }
+}
+
+// MARK: - Control Buttons Component
+private struct ExploreControlButtons: View {
+    @Binding var isSearchMode: Bool
+    @ObservedObject var viewModel: ExploreViewModel
+    @Binding var cameraPosition: MapCameraPosition
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            SearchModeButton(isSearchMode: $isSearchMode)
+            LocationButton(viewModel: viewModel, cameraPosition: $cameraPosition)
+        }
+    }
+}
+
+// MARK: - Search Mode Button Component
+private struct SearchModeButton: View {
+    @Binding var isSearchMode: Bool
+    
+    var body: some View {
+        Button {
+            isSearchMode.toggle()
+        } label: {
+            Image(systemName: isSearchMode ? "magnifyingglass.circle.fill" : "magnifyingglass.circle")
+                .font(.title2)
+                .foregroundColor(.white)
+                .padding(12)
+                .background(Color.accentColor)
+                .clipShape(Circle())
+                .shadow(radius: 4)
+        }
+    }
+}
+
+// MARK: - Location Button Component
+private struct LocationButton: View {
+    @ObservedObject var viewModel: ExploreViewModel
+    @Binding var cameraPosition: MapCameraPosition
+    
+    var body: some View {
         Button {
             viewModel.centerMapOnUser { region in
-                withAnimation(.easeInOut) {
-                    cameraPositionState.position = .region(region)
+                withAnimation {
+                    cameraPosition = .region(region)
                 }
             }
         } label: {
             Image(systemName: "location.fill")
                 .font(.title2)
-                .padding()
-                .background(Color(.systemBackground))
+                .foregroundColor(.white)
+                .padding(12)
+                .background(Color.accentColor)
                 .clipShape(Circle())
                 .shadow(radius: 4)
         }
-        .padding(.bottom, 30)
     }
 }
 
 struct VideoThumbnailButton: View {
     let annotation: VideoAnnotation
     let action: () -> Void
-    @State private var thumbnailImage: UIImage?
     
     var body: some View {
         Button(action: action) {
-            if let image = thumbnailImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 60, height: 60)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                    .shadow(radius: 4)
-            } else {
-                Circle()
-                    .fill(Color.accentColor)
-                    .frame(width: 60, height: 60)
-                    .overlay(ProgressView())
-                    .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                    .shadow(radius: 4)
-            }
-        }
-        .onAppear {
-            loadThumbnail()
-        }
-    }
-    
-    private func loadThumbnail() {
-        guard let url = URL(string: annotation.thumbnailUrl) else { return }
-        
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            if let data = data, let image = UIImage(data: data) {
-                DispatchQueue.main.async {
-                    self.thumbnailImage = image
+            if let thumbnailUrl = annotation.thumbnailUrl,
+               let url = URL(string: thumbnailUrl) {
+                AsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Color.gray
                 }
+            } else {
+                // Default placeholder for videos without thumbnails
+                Image(systemName: "video.fill")
+                    .font(.largeTitle)
+                    .foregroundColor(.white)
+                    .frame(width: 60, height: 80)
+                    .background(Color.gray)
             }
-        }.resume()
+        }
+        .frame(width: 60, height: 80)
+        .cornerRadius(8)
+        .shadow(radius: 4)
     }
-}
-
-@MainActor
-class CameraPositionState: ObservableObject {
-    @Published var position: MapCameraPosition = .region(MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
-        span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
-    ))
 }
 
 #Preview {
     ExploreView()
 }
-
-extension EnvironmentValues {
-    var cameraPosition: Binding<MapCameraPosition> {
-        get { self[CameraPositionKey.self] }
-        set { self[CameraPositionKey.self] = newValue }
-    }
-}
-
-private struct CameraPositionKey: EnvironmentKey {
-    static let defaultValue: Binding<MapCameraPosition> = .constant(.automatic)
-} 
