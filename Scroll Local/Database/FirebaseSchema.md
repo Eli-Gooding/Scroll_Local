@@ -17,6 +17,18 @@ struct User {
 }
 ```
 
+### Conversations Collection
+```swift
+struct Conversation {
+    let id: String
+    let participants: [String]    // Array of user IDs (always size 2)
+    let lastMessageText: String   // Preview of the last message
+    let lastMessageTime: Date     // Timestamp of the last message
+    let lastMessageSenderId: String // Who sent the last message
+    var unreadCount: Int         // Number of unread messages for receiver
+}
+```
+
 ### Videos Collection
 ```swift
 struct Video {
@@ -81,8 +93,9 @@ struct Comment {
 ```swift
 struct Message {
     let id: String
-    let senderId: String       // Reference to users collection
-    let receiverId: String     // Reference to users collection
+    let conversationId: String   // Reference to conversations collection
+    let senderId: String        // Reference to users collection
+    let receiverId: String      // Reference to users collection
     let text: String
     let createdAt: Date
     var isRead: Bool
@@ -124,6 +137,11 @@ service cloud.firestore {
          request.auth.uid == messageData.receiverId);
     }
     
+    function isConversationParticipant(conversationData) {
+      return isSignedIn() && 
+        conversationData.participants.hasAny([request.auth.uid]);
+    }
+    
     function isFollowOperation() {
       // Only allow updates to followers and following arrays
       return request.resource.data.diff(resource.data).affectedKeys()
@@ -161,7 +179,18 @@ service cloud.firestore {
     
     // Messages collection
     match /messages/{messageId} {
-      allow read, write: if isSignedIn() && isParticipant(resource.data);
+      allow read: if isSignedIn() && isParticipant(resource.data);
+      allow create: if isSignedIn() && isParticipant(request.resource.data);
+      allow update: if isSignedIn() && isParticipant(resource.data);
+      allow delete: if isSignedIn() && isOwner(resource.data.senderId);
+    }
+    
+    // Conversations collection
+    match /conversations/{conversationId} {
+      allow read: if isSignedIn() && isConversationParticipant(resource.data);
+      allow create: if isSignedIn() && isConversationParticipant(request.resource.data);
+      allow update: if isSignedIn() && isConversationParticipant(resource.data);
+      allow delete: if false; // Conversations should not be deleted
     }
     
     // Reactions collection
@@ -255,13 +284,19 @@ service firebase.storage {
    - Query scope: Collection
 
 ### Messages Collection
-1. User Messages Index:
+1. Conversation Messages Index:
+   - Fields:
+     - `conversationId` (ASCENDING)
+     - `createdAt` (ASCENDING)
+   - Query scope: Collection
+
+2. User Messages Index:
    - Fields:
      - `senderId` (ASCENDING)
      - `createdAt` (DESCENDING)
    - Query scope: Collection
-   
-2. Received Messages Index:
+
+3. Received Messages Index:
    - Fields:
      - `receiverId` (ASCENDING)
      - `createdAt` (DESCENDING)
@@ -278,6 +313,13 @@ service firebase.storage {
    - Fields:
      - `commentId` (ASCENDING)
      - `createdAt` (ASCENDING)
+   - Query scope: Collection
+
+### Conversations Collection
+1. User Conversations Index:
+   - Fields:
+     - `participants` (ARRAY_CONTAINS)
+     - `lastMessageTime` (DESCENDING)
    - Query scope: Collection
 
 ## Setup Instructions
