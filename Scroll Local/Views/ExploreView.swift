@@ -70,10 +70,14 @@ struct ExploreView: View {
         }
         .sheet(isPresented: $showLocationFeed) {
             if let location = selectedLocation {
-                LocationFeedView(coordinate: location)
+                LocationFeedView(
+                    coordinate: location,
+                    searchRadius: viewModel.circleRadius,
+                    selectedCategories: viewModel.selectedCategories
+                )
                     .presentationDetents([.medium, .large])
                     .onAppear {
-                        print("📱 Presenting LocationFeedView for coordinate: \(location)")
+                        print("📱 Presenting LocationFeedView for coordinate: \(location) with radius: \(viewModel.circleRadius)m and categories: \(viewModel.selectedCategories)")
                     }
             } else {
                 Color.clear
@@ -278,7 +282,10 @@ private struct CategoryToggleButton: View {
     let action: () -> Void
     
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            print("🔄 Toggling category: \(category.rawValue), was selected: \(isSelected)")
+            action()
+        }) {
             HStack {
                 Text(category.rawValue)
                     .font(.caption)

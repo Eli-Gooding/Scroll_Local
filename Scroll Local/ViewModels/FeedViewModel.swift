@@ -9,8 +9,8 @@ class FeedViewModel: ObservableObject {
 
     @Published var isLoading = false
     @Published var error: Error?
-    @Published private var savedVideoIds: Set<String> = []
-    @Published private var videoRatings: [String: Bool] = [:]
+    @Published var savedVideoIds: Set<String> = []
+    @Published var videoRatings: [String: Bool] = [:]
     
     private let db = Firestore.firestore()
     private var lastDocument: DocumentSnapshot?

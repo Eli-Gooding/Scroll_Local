@@ -6,6 +6,8 @@ import AVKit
 
 struct LocationFeedView: View {
     let coordinate: CLLocationCoordinate2D
+    let searchRadius: CLLocationDistance
+    let selectedCategories: Set<VideoCategory>
     @StateObject private var viewModel = LocationFeedViewModel()
     @Environment(\.dismiss) private var dismiss
     
@@ -16,8 +18,12 @@ struct LocationFeedView: View {
             LocationFeedContent(viewModel: viewModel)
         }
         .task {
-            print("🚀 LocationFeedView initialized with coordinate: \(coordinate)")
-            await viewModel.fetchVideos(near: coordinate)
+            print("🚀 LocationFeedView initialized with coordinate: \(coordinate), radius: \(searchRadius)m, categories: \(selectedCategories)")
+            await viewModel.fetchVideos(
+                near: coordinate,
+                radius: searchRadius,
+                categories: selectedCategories
+            )
         }
     }
 }
@@ -76,7 +82,7 @@ private struct EmptyStateView: View {
 // MARK: - Video List View
 private struct VideoListView: View {
     let videos: [Video]
-    let viewModel: FeedViewModel
+    let viewModel: LocationFeedViewModel
     
     var body: some View {
         ScrollView {
@@ -93,73 +99,89 @@ private struct VideoListView: View {
 // MARK: - View Model
 @MainActor
 class LocationFeedViewModel: FeedViewModel {
-    private let searchRadius = 201.168 // 1/8 mile in meters
     private var currentLocation: CLLocationCoordinate2D?
+    private var currentRadius: CLLocationDistance?
+    private var currentCategories: Set<VideoCategory>?
     
     override func fetchVideos() async {
-        if let location = currentLocation {
-            await fetchVideos(near: location)
+        if let location = currentLocation,
+           let radius = currentRadius,
+           let categories = currentCategories {
+            await fetchVideos(near: location, radius: radius, categories: categories)
         }
     }
     
-    func fetchVideos(near coordinate: CLLocationCoordinate2D) async {
-        print("🎯 Starting to fetch videos near coordinate: \(coordinate)")
+    func fetchVideos(near coordinate: CLLocationCoordinate2D, radius: CLLocationDistance, categories: Set<VideoCategory>) async {
+        print("🎯 Starting to fetch videos near coordinate: \(coordinate) within \(radius)m")
         isLoading = true
         currentLocation = coordinate
+        currentRadius = radius
+        currentCategories = categories
         
         let center = GeoPoint(latitude: coordinate.latitude, longitude: coordinate.longitude)
         print("📍 Search center: \(center)")
         
         do {
             let db = Firestore.firestore()
-            print("🔍 Querying Firestore with radius: \(searchRadius) meters")
+            print("🔍 Querying Firestore with radius: \(radius) meters")
             
+            // Use Firestore's geopoint queries
             let snapshot = try await db.collection("videos")
-                .whereField("location", isGreaterThan: GeoPoint(
-                    latitude: coordinate.latitude - 0.001,
-                    longitude: coordinate.longitude - 0.001
+                .whereField("location", isGreaterThanOrEqualTo: GeoPoint(
+                    latitude: coordinate.latitude - 0.1,  // Rough bounding box to help Firestore
+                    longitude: coordinate.longitude - 0.1
                 ))
-                .whereField("location", isLessThan: GeoPoint(
-                    latitude: coordinate.latitude + 0.001,
-                    longitude: coordinate.longitude + 0.001
+                .whereField("location", isLessThanOrEqualTo: GeoPoint(
+                    latitude: coordinate.latitude + 0.1,
+                    longitude: coordinate.longitude + 0.1
                 ))
                 .getDocuments()
             
-            print("📦 Found \(snapshot.documents.count) documents in bounding box")
+            print("📦 Found \(snapshot.documents.count) documents in rough bounding box")
             
             let fetchedVideos = snapshot.documents.compactMap { document -> Video? in
                 print("📄 Processing document: \(document.documentID)")
                 guard let data = document.data() as? [String: Any],
-                      let location = data["location"] as? GeoPoint else {
-                    print("❌ Invalid document data or missing location")
+                      let location = data["location"] as? GeoPoint,
+                      let category = data["category"] as? String,
+                      let videoCategory = VideoCategory(rawValue: category),
+                      categories.contains(videoCategory) else {
+                    print("❌ Invalid document data or category not selected")
                     return nil
                 }
                 
-                // Calculate distance from search center
+                // Calculate exact distance from tap location
                 let videoLocation = CLLocation(latitude: location.latitude, longitude: location.longitude)
-                let centerLocation = CLLocation(latitude: center.latitude, longitude: center.longitude)
+                let centerLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
                 let distance = videoLocation.distance(from: centerLocation)
                 
-                print("📏 Video distance from center: \(distance) meters")
+                print("📏 Video distance from center: \(distance)m (max allowed: \(radius)m)")
                 
-                // Only include videos within the search radius
-                if distance <= searchRadius {
-                    print("✅ Video within radius, including in results")
+                // Only include videos within the exact search radius
+                if distance <= radius {
+                    print("✅ Video within radius (\(String(format: "%.2f", distance))m) and matching category '\(category)', including in results")
                     return Video(id: document.documentID, data: data)
+                } else {
+                    print("❌ Video outside radius (\(String(format: "%.2f", distance))m > \(radius)m), excluding")
+                    return nil
                 }
-                print("❌ Video outside radius, excluding")
-                return nil
             }
             
-            print("🎬 Found \(fetchedVideos.count) videos within search radius")
+            print("🎬 Found \(fetchedVideos.count) matching videos within \(String(format: "%.2f", radius))m radius")
+            
+            if fetchedVideos.isEmpty {
+                print("ℹ️ No videos found within \(String(format: "%.2f", radius))m of tap location")
+            }
             
             // Update videos using the protected method
             updateVideos(fetchedVideos)
             print("🔄 Updated videos array with fetched results")
             
-            // Let parent class handle user interactions
-            print("👤 Fetching user interactions...")
-            await super.fetchVideos()
+            // Only fetch user interactions for the filtered videos
+            if !fetchedVideos.isEmpty {
+                print("👤 Fetching user interactions for \(fetchedVideos.count) videos...")
+                await fetchUserInteractions(for: fetchedVideos.compactMap { $0.id })
+            }
             
         } catch {
             print("❌ Error fetching videos: \(error)")
@@ -168,5 +190,38 @@ class LocationFeedViewModel: FeedViewModel {
         
         isLoading = false
         print("✅ Finished fetching videos")
+    }
+    
+    private func fetchUserInteractions(for videoIds: [String]) async {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        
+        do {
+            let db = Firestore.firestore()
+            
+            // Fetch saves
+            let savesSnapshot = try await db.collection("videoSaves")
+                .whereField("userId", isEqualTo: currentUserId)
+                .whereField("videoId", in: videoIds)
+                .getDocuments()
+            
+            savedVideoIds = Set(savesSnapshot.documents.compactMap { doc in
+                VideoSave(id: doc.documentID, data: doc.data())?.videoId
+            })
+            
+            // Fetch ratings
+            let ratingsSnapshot = try await db.collection("videoRatings")
+                .whereField("userId", isEqualTo: currentUserId)
+                .whereField("videoId", in: videoIds)
+                .getDocuments()
+            
+            videoRatings = Dictionary(uniqueKeysWithValues: ratingsSnapshot.documents.compactMap { doc in
+                if let rating = VideoRating(id: doc.documentID, data: doc.data()) {
+                    return (rating.videoId, rating.isHelpful)
+                }
+                return nil
+            })
+        } catch {
+            print("❌ Error fetching user interactions: \(error)")
+        }
     }
 } 
