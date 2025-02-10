@@ -119,18 +119,41 @@ class ChatViewModel: ObservableObject {
             "isRead": false
         ]
         
-        // Add message
-        db.collection("messages").addDocument(data: messageData)
+        // Create local message immediately
+        let localMessage = Message(
+            id: UUID().uuidString, // Temporary ID
+            senderId: currentUserId,
+            text: text,
+            timestamp: Date(),
+            isRead: false
+        )
         
-        // Update conversation
-        let conversationData: [String: Any] = [
-            "lastMessageText": text,
-            "lastMessageTime": Timestamp(),
-            "lastMessageSenderId": currentUserId,
-            "unreadCount": FieldValue.increment(Int64(1))
-        ]
+        // Update local state immediately
+        DispatchQueue.main.async {
+            self.messages.append(localMessage)
+        }
         
-        db.collection("conversations").document(conversationId).updateData(conversationData)
+        // Add message to Firebase
+        db.collection("messages").addDocument(data: messageData) { [weak self] error in
+            if let error = error {
+                print("Error sending message: \(error.localizedDescription)")
+                // Remove local message if Firebase save failed
+                DispatchQueue.main.async {
+                    self?.messages.removeAll { $0.id == localMessage.id }
+                }
+                return
+            }
+            
+            // Update conversation
+            let conversationData: [String: Any] = [
+                "lastMessageText": text,
+                "lastMessageTime": Timestamp(),
+                "lastMessageSenderId": currentUserId,
+                "unreadCount": FieldValue.increment(Int64(1))
+            ]
+            
+            self?.db.collection("conversations").document(self?.conversationId ?? "").updateData(conversationData)
+        }
     }
     
     deinit {
