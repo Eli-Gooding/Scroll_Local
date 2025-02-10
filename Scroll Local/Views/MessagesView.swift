@@ -134,6 +134,8 @@ struct MessageRow: View {
 struct ChatView: View {
     @StateObject private var viewModel: ChatViewModel
     @State private var messageText = ""
+    @State private var scrollProxy: ScrollViewProxy?
+    @State private var lastMessageId: String?
     
     init(conversationId: String, otherUserId: String) {
         _viewModel = StateObject(wrappedValue: ChatViewModel(conversationId: conversationId, otherUserId: otherUserId))
@@ -141,13 +143,29 @@ struct ChatView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(viewModel.messages) { message in
-                        MessageBubble(message: message)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(viewModel.messages) { message in
+                            MessageBubble(message: message)
+                                .id(message.id)
+                        }
+                    }
+                    .padding()
+                }
+                .onChange(of: viewModel.messages) { messages in
+                    if let lastMessage = messages.last {
+                        withAnimation {
+                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                        }
                     }
                 }
-                .padding()
+                .onAppear {
+                    scrollProxy = proxy
+                    if let lastMessage = viewModel.messages.last {
+                        proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                    }
+                }
             }
             
             // Message input

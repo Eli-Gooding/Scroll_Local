@@ -10,7 +10,7 @@ class ChatViewModel: ObservableObject {
     private let conversationId: String
     private let otherUserId: String
     
-    struct Message: Identifiable {
+    struct Message: Identifiable, Equatable {
         let id: String
         let senderId: String
         let text: String
@@ -19,6 +19,14 @@ class ChatViewModel: ObservableObject {
         
         var isFromCurrentUser: Bool {
             senderId == Auth.auth().currentUser?.uid
+        }
+        
+        static func == (lhs: Message, rhs: Message) -> Bool {
+            lhs.id == rhs.id &&
+            lhs.senderId == rhs.senderId &&
+            lhs.text == rhs.text &&
+            lhs.timestamp == rhs.timestamp &&
+            lhs.isRead == rhs.isRead
         }
     }
     
