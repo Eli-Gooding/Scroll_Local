@@ -55,13 +55,21 @@ struct MainTabView: View {
                         Label("Messages", systemImage: "message")
                     }
             }
-            .navigationTitle("Scroll Local")
             .navigationBarTitleDisplayMode(.inline)
-            .tint(.accentColor)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(.visible, for: .tabBar)
-            .toolbar(.visible, for: .tabBar)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 8) {
+                        Image("Scroll_Local_Logo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 32)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        
+                        Text("Scroll Local")
+                            .font(.headline)
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarLeading) {
                     NavigationLink {
                         ProfileView()
@@ -82,6 +90,10 @@ struct MainTabView: View {
                     }
                 }
             }
+            .tint(.accentColor)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.visible, for: .tabBar)
+            .toolbar(.visible, for: .tabBar)
         }
     }
 }

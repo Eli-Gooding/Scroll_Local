@@ -6,6 +6,8 @@ struct FeedView: View {
     @StateObject private var viewModel = FeedViewModel()
     @State private var selectedFeed = 0
     @State private var currentIndex = 0
+    @State private var showSearchBar = false
+    @State private var searchText = ""
     let initialVideoId: String?
     
     init(initialVideoId: String? = nil) {
@@ -21,10 +23,16 @@ struct FeedView: View {
         NavigationStack {
             GeometryReader { mainGeometry in
                 VStack(spacing: 0) {
-                    // Feed selector
+                    // Updated Feed selector with combined Explore and sparkles
                     Picker("Feed Type", selection: $selectedFeed) {
                         Text("Following").tag(0)
                         Text("Local Area").tag(1)
+                        Label {
+                            Text("Explore")
+                        } icon: {
+                            Image(systemName: "sparkles")
+                                .font(.caption)
+                        }.tag(2)
                     }
                     .pickerStyle(.segmented)
                     .padding(.horizontal)
@@ -33,6 +41,12 @@ struct FeedView: View {
                             .fill(Color.accentColor.opacity(0.1))
                             .padding(.horizontal, 8)
                     )
+                    
+                    // Search bar overlay when active
+                    if showSearchBar {
+                        SearchBar(text: $searchText, isVisible: $showSearchBar)
+                            .transition(.move(edge: .top))
+                    }
                     
                     if viewModel.isLoading && viewModel.videos.isEmpty {
                         Spacer()
@@ -54,44 +68,82 @@ struct FeedView: View {
                             .padding()
                         }
                         Spacer()
-                    } else if viewModel.videos.isEmpty {
+                    } else if viewModel.videos.isEmpty || selectedFeed == 2 {
                         Spacer()
-                        Text(selectedFeed == 0 ? "Follow some users to see their content" : "No videos found in your area")
-                            .font(.headline)
+                        if selectedFeed == 2 {
+                            VStack(spacing: 16) {
+                                Image(systemName: "sparkles.rectangle.stack")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(.accentColor)
+                                Text("Search for videos")
+                                    .font(.headline)
+                                Text("Use the search icon above to discover videos")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal)
+                            }
+                        } else {
+                            Text(selectedFeed == 0 ? "Follow some users to see their content" : "No videos found in your area")
+                                .font(.headline)
+                        }
                         Spacer()
                     } else {
-                        // Video feed
-                        ScrollView(.vertical, showsIndicators: false) {
-                            LazyVStack(spacing: 0) {
-                                if selectedFeed == 0 {
-                                    FollowingFeedContent(videos: viewModel.videos, currentIndex: $currentIndex, viewModel: viewModel)
-                                } else {
-                                    LocalAreaFeedContent(videos: viewModel.videos, currentIndex: $currentIndex, viewModel: viewModel)
-                                }
-                            }
-                            .scrollTargetLayout()
-                        }
-                        .scrollTargetBehavior(.paging)
-                        .scrollClipDisabled(false)
-                        .frame(height: mainGeometry.size.height - tabBarHeight - pickerHeight - bottomPadding)
-                        .scrollPosition(id: .init(get: { currentIndex }, set: { newValue in
-                            if let newIndex = newValue {
-                                currentIndex = newIndex
-                                // Load more videos when reaching second-to-last video
-                                if newIndex >= viewModel.videos.count - 2 {
-                                    Task {
-                                        await viewModel.fetchMoreVideos()
+                        // Video feed with search button for Explore tab
+                        ZStack(alignment: .topTrailing) {
+                            ScrollView(.vertical, showsIndicators: false) {
+                                LazyVStack(spacing: 0) {
+                                    switch selectedFeed {
+                                    case 0:
+                                        FollowingFeedContent(videos: viewModel.videos, currentIndex: $currentIndex, viewModel: viewModel)
+                                    case 1:
+                                        LocalAreaFeedContent(videos: viewModel.videos, currentIndex: $currentIndex, viewModel: viewModel)
+                                    case 2:
+                                        ExploreFeedContent(videos: viewModel.videos, currentIndex: $currentIndex, viewModel: viewModel)
+                                    default:
+                                        EmptyView()
                                     }
                                 }
+                                .scrollTargetLayout()
                             }
-                        }))
+                            .scrollTargetBehavior(.paging)
+                            .scrollClipDisabled(false)
+                            .frame(height: mainGeometry.size.height - tabBarHeight - pickerHeight - bottomPadding)
+                            .scrollPosition(id: .init(get: { currentIndex }, set: { newValue in
+                                if let newIndex = newValue {
+                                    currentIndex = newIndex
+                                    if newIndex >= viewModel.videos.count - 2 {
+                                        Task {
+                                            await viewModel.fetchMoreVideos()
+                                        }
+                                    }
+                                }
+                            }))
+                            
+                            // Search button (only shown in Explore tab)
+                            if selectedFeed == 2 && !showSearchBar {
+                                Button(action: {
+                                    withAnimation(.spring()) {
+                                        showSearchBar = true
+                                    }
+                                }) {
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.title2)
+                                        .foregroundColor(.white)
+                                        .padding(12)
+                                        .background(.ultraThinMaterial)
+                                        .clipShape(Circle())
+                                }
+                                .padding()
+                            }
+                        }
                     }
                 }
             }
         }
         .onChange(of: selectedFeed) { newValue in
             Task {
-                await viewModel.updateFeedType(newValue == 0 ? .following : .localArea)
+                await viewModel.updateFeedType(newValue == 0 ? .following : newValue == 1 ? .localArea : .explore)
             }
         }
         .task {
@@ -122,6 +174,21 @@ struct FollowingFeedContent: View {
 }
 
 struct LocalAreaFeedContent: View {
+    let videos: [Video]
+    @Binding var currentIndex: Int
+    @ObservedObject var viewModel: FeedViewModel
+    
+    var body: some View {
+        ForEach(Array(videos.enumerated()), id: \.element.id) { index, video in
+            VideoCard(video: video, index: index, viewModel: viewModel)
+                .frame(maxWidth: .infinity)
+                .containerRelativeFrame(.vertical)
+                .id(index)
+        }
+    }
+}
+
+struct ExploreFeedContent: View {
     let videos: [Video]
     @Binding var currentIndex: Int
     @ObservedObject var viewModel: FeedViewModel
@@ -398,6 +465,33 @@ struct InteractionButton: View {
         .padding(6)
         .background(.ultraThinMaterial)
         .clipShape(Capsule())
+    }
+}
+
+// New SearchBar component
+struct SearchBar: View {
+    @Binding var text: String
+    @Binding var isVisible: Bool
+    
+    var body: some View {
+        HStack {
+            TextField("Search videos...", text: $text)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding(.horizontal)
+            
+            Button(action: {
+                withAnimation(.spring()) {
+                    isVisible = false
+                    text = ""
+                }
+            }) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(.gray)
+            }
+            .padding(.trailing)
+        }
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
     }
 }
 

@@ -21,6 +21,7 @@ class FeedViewModel: ObservableObject {
     enum FeedType {
         case following
         case localArea
+        case explore
     }
     
     init() {
