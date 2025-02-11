@@ -298,18 +298,34 @@ class FeedViewModel: ObservableObject {
             let videoDoc = try await db.collection("videos").document(videoId).getDocument()
             print("Retrieved latest video data from Firebase")
             
-            if let updatedVideo = Video(id: videoId, data: videoDoc.data() ?? [:]) {
+            if let videoData = videoDoc.data(),
+               let updatedVideo = Video(id: videoId, data: videoData) {
+                print("📼 Video data: \(videoData)")
                 print("Updated video data: save count = \(updatedVideo.saveCount)")
+                
+                // Update local video data
                 if let index = videos.firstIndex(where: { $0.id == videoId }) {
                     videos[index] = updatedVideo
                 }
-            }
-            
-            // Update local saved state
-            if isSaved {
-                savedVideoIds.insert(videoId)
-            } else {
-                savedVideoIds.remove(videoId)
+                
+                // Update local saved state
+                if isSaved {
+                    savedVideoIds.insert(videoId)
+                    
+                    // Create notification using the video data we already have
+                    if let videoOwnerId = videoData["user_id"] as? String {
+                        print("Creating save notification for user: \(videoOwnerId)")
+                        await createNotification(
+                            for: videoOwnerId,
+                            type: "save",
+                            videoId: videoId
+                        )
+                    } else {
+                        print("❌ Could not find video owner ID in data")
+                    }
+                } else {
+                    savedVideoIds.remove(videoId)
+                }
             }
         } catch {
             print("Error toggling save: \(error)")
@@ -502,5 +518,43 @@ class FeedViewModel: ObservableObject {
     // Protected method for subclasses to update videos
     func updateVideos(_ newVideos: [Video]) {
         videos = newVideos
+    }
+    
+    // Add this method to FeedViewModel
+    private func createNotification(for recipientId: String, type: String, videoId: String, commentText: String? = nil) async {
+        print("🔔 Starting notification creation...")
+        guard let currentUser = Auth.auth().currentUser else {
+            print("❌ No current user found")
+            return
+        }
+        
+        // Don't create notification if recipient is the current user
+        if recipientId == currentUser.uid {
+            print("⚠️ Skipping notification - user is saving/commenting on their own video")
+            return
+        }
+        
+        print("📝 Creating notification for recipient: \(recipientId)")
+        print("👤 From user: \(currentUser.uid)")
+        print("🎥 For video: \(videoId)")
+        
+        let db = Firestore.firestore()
+        let notification = [
+            "recipientId": recipientId,
+            "senderId": currentUser.uid,
+            "senderDisplayName": currentUser.displayName ?? "A user",
+            "type": type,
+            "videoId": videoId,
+            "createdAt": FieldValue.serverTimestamp(),
+            "isRead": false,
+            "commentText": commentText
+        ] as [String: Any]
+        
+        do {
+            let docRef = try await db.collection("notifications").addDocument(data: notification)
+            print("✅ Successfully created notification with ID: \(docRef.documentID)")
+        } catch {
+            print("❌ Error creating notification: \(error)")
+        }
     }
 } 

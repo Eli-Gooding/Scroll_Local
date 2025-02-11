@@ -6,6 +6,11 @@ struct FeedView: View {
     @StateObject private var viewModel = FeedViewModel()
     @State private var selectedFeed = 0
     @State private var currentIndex = 0
+    let initialVideoId: String?
+    
+    init(initialVideoId: String? = nil) {
+        self.initialVideoId = initialVideoId
+    }
     
     // Layout constants
     private let tabBarHeight: CGFloat = 0
@@ -92,6 +97,11 @@ struct FeedView: View {
         .task {
             print("FeedView appeared, fetching videos...")
             await viewModel.fetchVideos()
+            
+            if let videoId = initialVideoId,
+               let index = viewModel.videos.firstIndex(where: { $0.id == videoId }) {
+                currentIndex = index
+            }
         }
     }
 }

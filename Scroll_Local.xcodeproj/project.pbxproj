@@ -38,6 +38,7 @@
 		F7071C882D53257C00B97517 /* Video.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7071C872D53257C00B97517 /* Video.swift */; };
 		F7071C8A2D53B4D300B97517 /* UserInteraction.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7071C892D53B4D300B97517 /* UserInteraction.swift */; };
 		F71522762D52AF7600EC90EB /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71522752D52AF7600EC90EB /* LoginView.swift */; };
+		F73088252D5AEE4A00131D17 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73088242D5AEE4A00131D17 /* SearchView.swift */; };
 		F73EEAB82D51936E008EBB3C /* Scroll_LocalApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73EEAB72D51936E008EBB3C /* Scroll_LocalApp.swift */; };
 		F73EEABA2D51936E008EBB3C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73EEAB92D51936E008EBB3C /* ContentView.swift */; };
 		F73EEABC2D519371008EBB3C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F73EEABB2D519371008EBB3C /* Assets.xcassets */; };
@@ -123,7 +124,7 @@
 		F7AC6D312D5A9C970045B652 /* MessagesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7AC6D2F2D5A9C970045B652 /* MessagesViewModel.swift */; };
 		F7AC6D322D5A9C970045B652 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7AC6D302D5A9C970045B652 /* ChatViewModel.swift */; };
 		F7AC6D342D5AB00A0045B652 /* SearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7AC6D332D5AB00A0045B652 /* SearchViewModel.swift */; };
-		F7AC6D362D5AB0130045B652 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7AC6D352D5AB0130045B652 /* SearchView.swift */; };
+		F7AC6D382D5AEB280045B652 /* NotificationsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7AC6D372D5AEB280045B652 /* NotificationsViewModel.swift */; };
 		F7B89C8B2D52B3670057EA70 /* FirebaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B89C8A2D52B3670057EA70 /* FirebaseService.swift */; };
 		F7B89C8D2D52B6090057EA70 /* PreviewFirebaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B89C8C2D52B6090057EA70 /* PreviewFirebaseService.swift */; };
 		F7B89C8F2D52B9C20057EA70 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B89C8E2D52B9C20057EA70 /* User.swift */; };
@@ -153,6 +154,7 @@
 		F7071C872D53257C00B97517 /* Video.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Video.swift; sourceTree = "<group>"; };
 		F7071C892D53B4D300B97517 /* UserInteraction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserInteraction.swift; sourceTree = "<group>"; };
 		F71522752D52AF7600EC90EB /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		F73088242D5AEE4A00131D17 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		F73EEAB42D51936E008EBB3C /* Scroll_Local.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Scroll_Local.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F73EEAB72D51936E008EBB3C /* Scroll_LocalApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scroll_LocalApp.swift; sourceTree = "<group>"; };
 		F73EEAB92D51936E008EBB3C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -192,7 +194,7 @@
 		F7AC6D2F2D5A9C970045B652 /* MessagesViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MessagesViewModel.swift; sourceTree = "<group>"; };
 		F7AC6D302D5A9C970045B652 /* ChatViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		F7AC6D332D5AB00A0045B652 /* SearchViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SearchViewModel.swift; sourceTree = "<group>"; };
-		F7AC6D352D5AB0130045B652 /* SearchView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		F7AC6D372D5AEB280045B652 /* NotificationsViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NotificationsViewModel.swift; sourceTree = "<group>"; };
 		F7B89C8A2D52B3670057EA70 /* FirebaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseService.swift; sourceTree = "<group>"; };
 		F7B89C8C2D52B6090057EA70 /* PreviewFirebaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewFirebaseService.swift; sourceTree = "<group>"; };
 		F7B89C8E2D52B9C20057EA70 /* User.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
@@ -309,6 +311,7 @@
 		F7071C802D53217300B97517 /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
+				F7AC6D372D5AEB280045B652 /* NotificationsViewModel.swift */,
 				F7AC6D332D5AB00A0045B652 /* SearchViewModel.swift */,
 				F7AC6D302D5A9C970045B652 /* ChatViewModel.swift */,
 				F7AC6D2F2D5A9C970045B652 /* MessagesViewModel.swift */,
@@ -390,7 +393,6 @@
 		F73EEAEE2D51AB4E008EBB3C /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				F7AC6D352D5AB0130045B652 /* SearchView.swift */,
 				F7AC6D2A2D5860AA0045B652 /* LocationFeedView.swift */,
 				F7AC6CE32D57CB060045B652 /* CameraView.swift */,
 				F7AC6CEA2D57CB070045B652 /* CaptureView.swift */,
@@ -409,6 +411,7 @@
 				F73EEAF52D51BD7D008EBB3C /* NotificationsView.swift */,
 				F73EEAF92D51D507008EBB3C /* OtherUserProfileView.swift */,
 				F71522752D52AF7600EC90EB /* LoginView.swift */,
+				F73088242D5AEE4A00131D17 /* SearchView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -642,6 +645,7 @@
 				F7AC6CF22D57CB070045B652 /* VideoMetadataForm.swift in Sources */,
 				F7AC6CE12D57CAFC0045B652 /* Comment.swift in Sources */,
 				F7AC6D342D5AB00A0045B652 /* SearchViewModel.swift in Sources */,
+				F7AC6D382D5AEB280045B652 /* NotificationsViewModel.swift in Sources */,
 				F7AC6CDA2D57CAEA0045B652 /* CommentViewModel.swift in Sources */,
 				F7071C842D5321E400B97517 /* FeedViewModel.swift in Sources */,
 				F7AC6CEF2D57CB070045B652 /* FollowListView.swift in Sources */,
@@ -656,6 +660,7 @@
 				F73EEAF22D51BBAD008EBB3C /* ProfileView.swift in Sources */,
 				F73EEABA2D51936E008EBB3C /* ContentView.swift in Sources */,
 				F7AC6D322D5A9C970045B652 /* ChatViewModel.swift in Sources */,
+				F73088252D5AEE4A00131D17 /* SearchView.swift in Sources */,
 				F7AC6CD82D57CAEA0045B652 /* OtherUserProfileViewModel.swift in Sources */,
 				F7AC6D312D5A9C970045B652 /* MessagesViewModel.swift in Sources */,
 				F7AC6CF72D57CB070045B652 /* CommentView.swift in Sources */,
@@ -671,7 +676,6 @@
 				F7AC6CDC2D57CAEA0045B652 /* ExploreViewModel.swift in Sources */,
 				F73EEAF62D51BD7D008EBB3C /* NotificationsView.swift in Sources */,
 				F7AC6CF52D57CB070045B652 /* CaptureView.swift in Sources */,
-				F7AC6D362D5AB0130045B652 /* SearchView.swift in Sources */,
 				F7AC6CD92D57CAEA0045B652 /* CameraViewModel.swift in Sources */,
 				F7B89C8F2D52B9C20057EA70 /* User.swift in Sources */,
 				F7AC6CEE2D57CB070045B652 /* CameraView.swift in Sources */,
