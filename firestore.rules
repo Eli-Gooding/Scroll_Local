@@ -6,75 +6,52 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isParticipant(messageData) {
-      return isSignedIn() && 
-        (request.auth.uid == messageData.senderId || 
-         request.auth.uid == messageData.receiverId);
-    }
-    
-    function isConversationParticipant(conversationData) {
-      return isSignedIn() && 
-        conversationData.participants.hasAny([request.auth.uid]);
-    }
-    
-    function isFollowOperation() {
-      return request.resource.data.diff(resource.data).affectedKeys()
-        .hasOnly(['followers', 'following']);
-    }
-    
     // Users collection
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && (isOwner(userId) || isFollowOperation());
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow read: if true;
+      allow write: if isSignedIn();
     }
     
     // Videos collection
     match /videos/{videoId} {
-      allow read: if true;  // All videos are publicly readable
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && isOwner(resource.data.userId);
+      allow read: if true;
+      allow write: if isSignedIn();
     }
     
     // Comments collection
     match /comments/{commentId} {
       allow read: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && isOwner(resource.data.userId);
-      
-      // Prevent replies to replies
-      allow create: if isSignedIn() && 
-        (!resource.data.isReply || 
-         (resource.data.isReply && exists(/databases/$(database)/documents/comments/$(resource.data.parentCommentId)) && 
-          !get(/databases/$(database)/documents/comments/$(resource.data.parentCommentId)).data.isReply));
+      allow write: if isSignedIn();
+    }
+    
+    // VideoSaves collection
+    match /videoSaves/{saveId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    
+    // Notifications collection
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow write: if isSignedIn();
     }
     
     // Messages collection
     match /messages/{messageId} {
-      allow read: if isSignedIn() && isParticipant(resource.data);
-      allow create: if isSignedIn() && isParticipant(request.resource.data);
-      allow update: if isSignedIn() && isParticipant(resource.data);
-      allow delete: if isSignedIn() && isOwner(resource.data.senderId);
+      allow read: if true;
+      allow write: if isSignedIn();
     }
     
     // Conversations collection
     match /conversations/{conversationId} {
-      allow read: if isSignedIn() && isConversationParticipant(resource.data);
-      allow create: if isSignedIn() && isConversationParticipant(request.resource.data);
-      allow update: if isSignedIn() && isConversationParticipant(resource.data);
-      allow delete: if false; // Conversations should not be deleted
+      allow read: if true;
+      allow write: if isSignedIn();
     }
     
     // Reactions collection
     match /reactions/{reactionId} {
       allow read: if true;
-      allow create: if isSignedIn();
-      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+      allow write: if isSignedIn();
     }
   }
 } 

@@ -147,11 +147,27 @@ class CommentViewModel: ObservableObject {
         
         try commentRef.setData(from: comment)
         
-        // Update video's comment count
+        // Update video's comment count and get video owner ID in one operation
         let videoRef = db.collection("videos").document(videoId)
-        try await videoRef.updateData([
-            "comment_count": FieldValue.increment(Int64(1))
-        ])
+        let videoDoc = try await videoRef.getDocument()
+        
+        if let videoData = videoDoc.data(),
+           let videoOwnerId = videoData["user_id"] as? String {
+            // Update comment count
+            try await videoRef.updateData([
+                "comment_count": FieldValue.increment(Int64(1))
+            ])
+            
+            print("Creating comment notification for user: \(videoOwnerId)")
+            // Create notification for video owner
+            await createNotification(
+                for: videoOwnerId,
+                videoId: videoId,
+                commentText: text
+            )
+        } else {
+            print("❌ Could not find video owner ID in data")
+        }
         
         // Add comment to local state immediately
         var updatedComment = comment
@@ -284,6 +300,44 @@ class CommentViewModel: ObservableObject {
         }
         
         return reactions
+    }
+    
+    private func createNotification(for recipientId: String, videoId: String, commentText: String) async {
+        print("🔔 Starting comment notification creation...")
+        guard let currentUser = Auth.auth().currentUser else {
+            print("❌ No current user found")
+            return
+        }
+        
+        // Don't create notification if recipient is the current user
+        if recipientId == currentUser.uid {
+            print("⚠️ Skipping notification - user is commenting on their own video")
+            return
+        }
+        
+        print("📝 Creating comment notification for recipient: \(recipientId)")
+        print("👤 From user: \(currentUser.uid)")
+        print("🎥 For video: \(videoId)")
+        print("💬 Comment text: \(commentText)")
+        
+        let db = Firestore.firestore()
+        let notification = [
+            "recipientId": recipientId,
+            "senderId": currentUser.uid,
+            "senderDisplayName": currentUser.displayName ?? "A user",
+            "type": "comment",
+            "videoId": videoId,
+            "createdAt": FieldValue.serverTimestamp(),
+            "isRead": false,
+            "commentText": commentText
+        ] as [String: Any]
+        
+        do {
+            let docRef = try await db.collection("notifications").addDocument(data: notification)
+            print("✅ Successfully created notification with ID: \(docRef.documentID)")
+        } catch {
+            print("❌ Error creating notification: \(error)")
+        }
     }
     
     deinit {

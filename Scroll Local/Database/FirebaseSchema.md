@@ -117,6 +117,21 @@ struct Reaction {
 }
 ```
 
+### Notifications Collection
+```swift
+struct Notification {
+    let id: String
+    let recipientId: String     // User receiving the notification
+    let senderId: String        // User who triggered the notification
+    let senderDisplayName: String? // Display name of sender
+    let type: String           // "save" or "comment"
+    let videoId: String        // Reference to the video
+    let createdAt: Date
+    var isRead: Bool
+    let commentText: String?   // Only for comment notifications
+}
+```
+
 ## Security Rules
 
 ### Firestore Rules
@@ -334,6 +349,13 @@ service firebase.storage {
    - Fields:
      - `participants` (ARRAY_CONTAINS)
      - `lastMessageTime` (DESCENDING)
+   - Query scope: Collection
+
+### Notifications Collection
+1. User Notifications Index:
+   - Fields:
+     - `recipientId` (ASCENDING)
+     - `createdAt` (DESCENDING)
    - Query scope: Collection
 
 ## Setup Instructions
