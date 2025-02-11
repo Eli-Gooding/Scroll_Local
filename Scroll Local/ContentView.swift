@@ -128,12 +128,6 @@ struct LocalAreaFeedView: View {
 }
 */
 
-struct SearchView: View {
-    var body: some View {
-        Text("Search Coming Soon")
-    }
-}
-
 struct SavedVideosView: View {
     var body: some View {
         Text("Saved Videos Coming Soon")

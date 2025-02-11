@@ -36,11 +36,13 @@ struct Video {
     let userId: String          // Reference to users collection
     let userDisplayName: String? // Display name of the user who posted the video
     let title: String
+    let searchableTitle: [String] // Array of lowercase words from title + full title
     var description: String
     let videoUrl: String        // URL to video in Storage
     let thumbnailUrl: String?   // URL to thumbnail in Storage
     let location: GeoPoint      // Geographic coordinates
     let formattedLocation: String // Human-readable location (e.g., "San Francisco, CA, USA")
+    let searchableLocation: [String] // Array of lowercase words from location + full location
     let createdAt: Date
     var views: Int
     var saveCount: Int         // Total number of saves
@@ -259,6 +261,18 @@ service firebase.storage {
 3. User Posts Index:
    - Fields:
      - `user_id` (ASCENDING)
+     - `created_at` (DESCENDING)
+   - Query scope: Collection
+
+4. Search Title Index:
+   - Fields:
+     - `searchableTitle` (ARRAY_CONTAINS)
+     - `created_at` (DESCENDING)
+   - Query scope: Collection
+
+5. Search Location Index:
+   - Fields:
+     - `searchableLocation` (ARRAY_CONTAINS)
      - `created_at` (DESCENDING)
    - Query scope: Collection
 

@@ -162,6 +162,13 @@ struct VideoPreviewView: View {
                     isUploading = false
                     presentationMode.wrappedValue.dismiss()
                 }
+                
+                // Inside uploadVideo function, add some debug prints:
+                print("Debug: Storing video with:")
+                print("Title: \(title)")
+                print("Searchable Title: \(video.searchableTitle)")
+                print("Location: \(formattedLocation)")
+                print("Searchable Location: \(video.searchableLocation)")
             } catch {
                 print("Error uploading video: \(error)")
                 isUploading = false
