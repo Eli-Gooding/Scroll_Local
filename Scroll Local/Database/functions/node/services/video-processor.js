@@ -7,11 +7,35 @@ const OpenAI = require('openai');
 
 exports.extractFrames = async (videoPath, positions) => {
     const frames = [];
+
+    // First, get video duration
+    const durationResult = await spawn(ffmpegPath, [
+        '-i', videoPath,
+        '-f', 'null',
+        '-'
+    ], {
+        capture: ['stderr']
+    });
+
+    // Parse duration from ffmpeg output - now including milliseconds
+    const durationMatch = durationResult.stderr.toString().match(/Duration: (\d{2}):(\d{2}):(\d{2})\.(\d{2})/);
+    if (!durationMatch) {
+        throw new Error('Could not determine video duration');
+    }
+
+    const hours = parseInt(durationMatch[1]);
+    const minutes = parseInt(durationMatch[2]);
+    const seconds = parseInt(durationMatch[3]);
+    const milliseconds = parseInt(durationMatch[4]) * 10; // Convert centiseconds to milliseconds
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds + (milliseconds / 1000);
+
     for (const position of positions) {
+        const timeInSeconds = (totalSeconds * position).toFixed(3); // Keep 3 decimal places for milliseconds
         const framePath = path.join(os.tmpdir(), `frame_${position}.jpg`);
+        
         await spawn(ffmpegPath, [
             '-i', videoPath,
-            '-ss', `${position * 100}%`,
+            '-ss', `${timeInSeconds}`,  // Now includes milliseconds
             '-vframes', '1',
             '-vf', 'scale=512:512',
             framePath
@@ -43,8 +67,9 @@ exports.getVideoDescription = async (frames) => {
         apiKey: process.env.OPENAI_API_KEY
     });
 
+    console.log('Getting description from OpenAI...');
     const response = await openai.chat.completions.create({
-        model: "gpt-4-vision-preview",
+        model: "gpt-4o",
         messages: [
             {
                 role: "user",
@@ -64,5 +89,6 @@ exports.getVideoDescription = async (frames) => {
         ],
         max_tokens: 300
     });
+    console.log('Got description:', response.choices[0].message.content);
     return response.choices[0].message.content;
 }; 

@@ -110,7 +110,8 @@ exports.generateThumbnail = functions
 exports.generateVideoDescription = functions
     .runWith({
         memory: '1GB',
-        timeoutSeconds: 300
+        timeoutSeconds: 300,
+        secrets: ["OPENAI_API_KEY"]
     })
     .storage
     .object()
