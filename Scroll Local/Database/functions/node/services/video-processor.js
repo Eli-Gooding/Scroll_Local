@@ -76,7 +76,11 @@ exports.getVideoDescription = async (frames) => {
                 content: [
                     {
                         type: "text",
-                        text: "These are three frames from a video in chronological order. Please describe what is happening in the video based on these frames. Keep the description concise but informative."
+                        text: "These are three frames from a video in chronological order. " +
+                             "Please describe what is happening in the video based on these frames. " +
+                             "Keep the description concise, colorful, and informative. " + 
+                             "Your response should be describing the video as a whole, " +
+                             "not just describing each frame by itself."
                     },
                     ...frames.map(frame => ({
                         type: "image_url",
