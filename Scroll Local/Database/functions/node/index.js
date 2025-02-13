@@ -129,13 +129,25 @@ exports.generateVideoDescription = functions
                 .download({ destination: tempVideoPath });
 
             const frames = await extractFrames(tempVideoPath, [0.25, 0.5, 0.75]);
-            const description = await getVideoDescription(frames);
             const videoUrl = getStorageUrl(object.bucket, object.name);
-            
             const videoDoc = await findVideoDocument(videoUrl);
+            
             if (videoDoc) {
-                await videoDoc.ref.update({ ai_description: description });
-                console.log('Updated video document with AI description:', videoDoc.id);
+                const videoData = videoDoc.data();
+                const result = await getVideoDescription(frames, {
+                    id: videoDoc.id,
+                    title: videoData.title,
+                    formattedLocation: videoData.formattedLocation
+                });
+
+                // Create update object with only defined values
+                const updateData = {};
+                if (result.description) updateData.ai_description = result.description;
+                if (result.embedding) updateData.embedding = result.embedding;
+                if (result.embedding_metadata) updateData.embedding_metadata = result.embedding_metadata;
+
+                await videoDoc.ref.update(updateData);
+                console.log('Updated video document with AI description and embedding:', videoDoc.id);
             }
 
             fs.unlinkSync(tempVideoPath);
