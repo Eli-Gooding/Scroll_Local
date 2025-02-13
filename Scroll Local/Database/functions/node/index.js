@@ -156,4 +156,86 @@ exports.generateVideoDescription = functions
             console.error('Error processing video:', error);
             return null;
         }
+    });
+
+exports.semanticVideoSearch = functions
+    .runWith({
+        memory: '1GB',
+        timeoutSeconds: 300,
+        secrets: ["OPENAI_API_KEY", "LANGSMITH_API_KEY"]
+    })
+    .https.onCall(async (data, context) => {
+        // Initialize LangSmith
+        const { Client } = require("langsmith");
+        const client = new Client();
+        
+        const { query, location } = data;
+        
+        try {
+            // Create run trace
+            const run = await client.createRun({
+                name: "video_semantic_search",
+                inputs: { query, location }
+            });
+
+            // 1. Generate search variations using OpenAI
+            const searchQueries = await generateSearchQueries(query);
+            
+            // 2. Perform vector search for each query
+            let allResults = [];
+            for (const searchQuery of searchQueries) {
+                const vectorResults = await performVectorSearch(
+                    searchQuery, 
+                    location, 
+                    5  // top 5 results per query
+                );
+                allResults = [...allResults, ...vectorResults];
+            }
+            
+            // 3. Rank results using OpenAI
+            const rankedResults = await rankResults(allResults, query);
+            
+            // Update run with results
+            await client.updateRun(run.id, {
+                outputs: { rankedResults },
+                status: "completed"
+            });
+
+            return rankedResults.slice(0, 5); // Return top 5 results
+            
+        } catch (error) {
+            console.error('Error in semantic search:', error);
+            
+            // Log error to LangSmith
+            await client.updateRun(run.id, {
+                error: error.message,
+                status: "failed"
+            });
+            
+            throw new functions.https.HttpsError('internal', error.message);
+        }
+    });
+
+// Add feedback endpoint
+exports.submitSearchFeedback = functions
+    .runWith({
+        memory: '256MB',
+        timeoutSeconds: 60
+    })
+    .https.onCall(async (data, context) => {
+        const { searchId, isHelpful, userId } = data;
+        
+        try {
+            await admin.firestore().collection('searchFeedback').add({
+                searchId,
+                isHelpful,
+                userId,
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+            
+            return { success: true };
+        } catch (error) {
+            console.error('Error submitting feedback:', error);
+            throw new functions.https.HttpsError('internal', error.message);
+        }
     }); 
