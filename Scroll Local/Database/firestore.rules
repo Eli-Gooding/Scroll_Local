@@ -77,5 +77,10 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow delete: if isSignedIn() && isOwner(resource.data.userId);
     }
+    
+    match /explore_results/{resultId} {
+      allow write: if request.auth != null;  // Allow authenticated users to write feedback
+      allow read: if request.auth != null;
+    }
   }
 } 

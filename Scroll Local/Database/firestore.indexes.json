@@ -80,6 +80,20 @@
         { "fieldPath": "participants", "arrayConfig": "CONTAINS" },
         { "fieldPath": "lastMessageTime", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "videos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "embedding",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "formattedLocation",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
