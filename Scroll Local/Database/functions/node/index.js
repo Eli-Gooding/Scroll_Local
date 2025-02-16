@@ -229,7 +229,7 @@ async function performVectorSearch(query, location, limit) {
 
     // Generate embedding for the query
     const embeddingResponse = await openai.embeddings.create({
-        model: "text-embedding-ada-002",
+        model: "text-embedding-3-small",
         input: query
     });
     const queryEmbedding = embeddingResponse.data[0].embedding;
@@ -308,7 +308,7 @@ async function rankResults(results, originalQuery) {
                 content: "You are a helpful assistant that ranks search results. Return a JSON object with a 'ranked_ids' array containing video IDs in order of relevance."
             }, {
                 role: "user",
-                content: `Rank these videos by relevance to the query: "${originalQuery}"\n\nVideos:\n${formattedResults.map(r => 
+                content: `You should give user's videos they would like based on their request. Rank these videos by relevance to the query: "${originalQuery}"\n\nVideos:\n${formattedResults.map(r => 
                     `ID: ${r.id}\nTitle: ${r.title}\nDescription: ${r.description}\nLocation: ${r.location}\n---`
                 ).join('\n')}`
             }],

@@ -1,8 +1,11 @@
 {
-  "functions": {
-    "predeploy": [],
-    "source": "functions"
-  },
+  "functions": [
+    {
+      "source": "functions/node",
+      "codebase": "default",
+      "runtime": "nodejs20"
+    }
+  ],
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"

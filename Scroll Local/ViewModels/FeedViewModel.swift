@@ -1,16 +1,17 @@
 import Foundation
 import FirebaseFirestore
 import FirebaseAuth
+import FirebaseFunctions
 
 @MainActor
 class FeedViewModel: ObservableObject {
-    // Make videos published to ensure UI updates
-    @Published private(set) var videos: [Video] = []
-
+    @Published var videos: [Video] = []
     @Published var isLoading = false
     @Published var error: Error?
     @Published var savedVideoIds: Set<String> = []
     @Published var videoRatings: [String: Bool] = [:]
+    @Published var hasSearched = false
+    @Published var lastSearchQuery: String?
     
     private let db = Firestore.firestore()
     private var lastDocument: DocumentSnapshot?
@@ -34,9 +35,18 @@ class FeedViewModel: ObservableObject {
     func updateFeedType(_ type: FeedType) async {
         print("Updating feed type to: \(type)")
         currentFeedType = type
+        
+        // Clear videos in all cases
         videos.removeAll()
-        lastDocument = nil
-        await fetchVideos()
+        
+        if type == .explore {
+            // For explore tab, just clear videos and wait for search
+            lastDocument = nil
+        } else {
+            // For following and local area, fetch new videos
+            lastDocument = nil
+            await fetchVideos()
+        }
     }
     
     // Refresh video data to get latest counts
@@ -556,6 +566,35 @@ class FeedViewModel: ObservableObject {
             print("✅ Successfully created notification with ID: \(docRef.documentID)")
         } catch {
             print("❌ Error creating notification: \(error)")
+        }
+    }
+    
+    func submitExploreResults(query: String, videos: [Video], isHelpful: Bool) async {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        
+        let db = Firestore.firestore()
+        do {
+            let videoDetails = videos.map { video -> [String: Any] in
+                return [
+                    "id": video.id,
+                    "title": video.title ?? "",
+                    "description": video.description ?? "",
+                    "user_id": video.userId,
+                    "location": video.location ?? ""
+                ]
+            }
+            
+            try await db.collection("explore_results").addDocument(data: [
+                "query": query,
+                "is_helpful": isHelpful,
+                "user_id": userId,
+                "video_ids": videos.map { $0.id },
+                "search_results": videoDetails,
+                "created_at": FieldValue.serverTimestamp()
+            ])
+            print("Successfully submitted explore results feedback")
+        } catch {
+            print("Error submitting explore results:", error)
         }
     }
 } 

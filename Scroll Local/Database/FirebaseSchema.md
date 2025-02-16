@@ -51,6 +51,9 @@ struct Video {
     var commentCount: Int      // Total number of comments
     var tags: [String]        // Array of hashtags
     var category: String      // Video category
+    var ai_description: String?   // AI-generated description of video content
+    var embedding: Vector?        // Embedding vector of video metadata and description
+    var embedding_metadata: Map<String, String> // Metadata used to generate embedding
 }
 ```
 
@@ -289,6 +292,17 @@ service firebase.storage {
    - Fields:
      - `searchableLocation` (ARRAY_CONTAINS)
      - `created_at` (DESCENDING)
+   - Query scope: Collection
+
+6. Vector Search Index:
+   - Fields:
+     - `embedding` (VECTOR)
+     - `formattedLocation` (ASCENDING)
+     - Configuration: {
+         "dimensions": 1536,
+         "flat": {},
+         "filterable": ["formattedLocation"]
+       }
    - Query scope: Collection
 
 ### VideoSaves Collection

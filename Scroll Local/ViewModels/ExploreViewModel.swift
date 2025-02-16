@@ -76,7 +76,10 @@ class ExploreViewModel: NSObject, ObservableObject {
     }
     
     private func handleLocationUpdate(_ location: CLLocation) {
-        print("📍 Location update received: \(location.coordinate)")
+        #if DEBUG
+            // Commented out to reduce log clutter
+            // print("📍 Location update received: \(location.coordinate)")
+        #endif
         userLocation = location
         locationError = nil
         

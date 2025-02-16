@@ -142,7 +142,6 @@ public struct Video: Identifiable, Equatable, Codable, Hashable {
         guard let userId = data["user_id"] as? String,
               let title = data["title"] as? String,
               let description = data["description"] as? String,
-              let location = data["location"] as? GeoPoint,
               let formattedLocation = data["formatted_location"] as? String,
               let tags = data["tags"] as? [String],
               let category = data["category"] as? String,
@@ -155,6 +154,18 @@ public struct Video: Identifiable, Equatable, Codable, Hashable {
               let commentCount = data["comment_count"] as? Int else {
             return nil
         }
+
+        // Handle both GeoPoint and dictionary location formats
+        var geoPoint: GeoPoint?
+        if let location = data["location"] as? GeoPoint {
+            geoPoint = location
+        } else if let locationDict = data["location"] as? [String: Any],
+                  let lat = (locationDict["_latitude"] as? String).flatMap(Double.init) ?? locationDict["latitude"] as? Double,
+                  let lng = (locationDict["_longitude"] as? String).flatMap(Double.init) ?? locationDict["longitude"] as? Double {
+            geoPoint = GeoPoint(latitude: lat, longitude: lng)
+        }
+        
+        guard let location = geoPoint else { return nil }
         
         self.userId = userId
         self.userDisplayName = data["user_display_name"] as? String
